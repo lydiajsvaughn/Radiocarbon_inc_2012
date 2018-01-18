@@ -5,10 +5,6 @@ date: "2018-01-18"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-#knitr::opts_chunk$set(echo = TRUE)
-```
-
 ```{r}
 inc <- read.csv('data/Radiocarbon_incubations_Barrow_2012_2014.csv', stringsAsFactors=F)
 ```
