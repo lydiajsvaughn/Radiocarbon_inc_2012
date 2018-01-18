@@ -1,0 +1,227 @@
+---
+title: "Delta analysis for 2012 Radiocarbon incubations"
+author: "Lydia Vaughn"
+date: "2018-01-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+inc <- read.csv('data/Radiocarbon_incubations_Barrow_2012_2014.csv', stringsAsFactors=F)
+```
+
+Packages
+```{r}
+library(tidyverse)
+library(lme4)
+library(gridExtra)
+```
+
+Limit the dataframe to just CO2 from this experiment and make column for soil sample identifier
+```{r}
+inc2012 <- inc %>% filter(observation_date=="8/14/12" & sample_type=="CO2" &!is.na(X14C))  %>% mutate(soil_sample = paste(plot_ID,layer_top))
+```
+
+Calculate Delta2 and Delta3 for each sample
+```{r}
+BulkDelta <- inc2012 %>% select(soil_sample,plot_ID,CO2_production,sample_date) %>%  spread(key=sample_date,value=CO2_production) %>% rename(T3 = "10/22/12", T2 = "9/27/12", T1 = "9/4/12") %>% mutate(Delta2 = (T2 - T1)/T1*100, Delta3 = (T3 - T1)/T1*100)
+```
+
+Design a theme for all plots
+```{r}
+plottheme <- theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank()) +
+  theme(axis.text = element_text(color="black", size=12)) +
+  theme(axis.title = element_text(size=14)) +
+  theme(plot.title = element_text(colour = "black", size=14, hjust = -0.1)) 
+
+```
+
+Plot Delta2 vs Delta3 for the bulk data
+```{r}
+BulkPlot <- ggplot(BulkDelta, aes(y=Delta2, x=Delta3)) +
+  geom_point(size=2.5, color="#27A36B") +
+  ylab(expression(Delta[2]~"(%)")) +
+  xlab(expression(Delta[3]~"(%)")) +
+  xlim(-75, 25) +
+  ylim(-50,50) +
+  ggtitle('a') 
+
+BulkPlot + plottheme
+```
+
+Use a linear mixed effects model to find the linear relationship between Delta2 and Delta3
+```{r}
+BulkModel <- lmer(Delta2 ~ Delta3 + (1|plot_ID), data=BulkDelta)
+summary(BulkModel)
+```
+
+Add trend line to BulkPlot
+```{r}
+BulkPlot <- ggplot(BulkDelta, aes(y=Delta2, x=Delta3)) +
+  geom_point(size=2.5, color="#27A36B") +
+  ylab(expression(Delta[2]~"(%)")) +
+  xlab(expression(Delta[3]~"(%)")) +
+  xlim(-75, 25) +
+  ylim(-50,50) +
+  ggtitle('a') +
+  geom_abline(slope=summary(BulkModel)$coefficients[2,1], intercept=summary(BulkModel)$coefficients[1,1], lty="dashed", colour="dimgrey") 
+
+BulkPlot + plottheme
+ggsave("BulkPlot.png", path="plots", width = 6,height = 6,dpi = 300)
+```
+
+Partition bulk CO2 fluxes into passive and active fractions with turnover times of (a) 50 and 5000 years and (b) 20 and 10000 years
+```{r}
+part_50_5000 <- inc2012 %>% mutate(f_active = (X14C + 360)/(360 + 146), f_passive = 1 - f_active, CO2_production_active = f_active * CO2_production, CO2_production_passive = f_passive * CO2_production) 
+
+part_20_10000 <- inc2012 %>% mutate(f_active = (X14C + 524)/(524 + 137), f_passive = 1 - f_active, CO2_production_active = f_active * CO2_production, CO2_production_passive = f_passive * CO2_production) 
+```
+
+Calculate Delta2 and Delta3 for each set of partitioned fluxes
+```{r}
+active_50_5000 <- part_50_5000 %>% select(soil_sample,plot_ID,CO2_production_active,sample_date) %>%  spread(key=sample_date,value=CO2_production_active) %>% rename(T3 = "10/22/12", T2 = "9/27/12", T1 = "9/4/12") %>% mutate(Delta2 = (T2 - T1)/T1*100, Delta3 = (T3 - T1)/T1*100, pool = "Active") %>% select(soil_sample, plot_ID, Delta2, Delta3, pool)
+
+passive_50_5000 <- part_50_5000 %>% select(soil_sample,plot_ID,CO2_production_passive,sample_date) %>%  spread(key=sample_date,value=CO2_production_passive) %>% rename(T3 = "10/22/12", T2 = "9/27/12", T1 = "9/4/12") %>% mutate(Delta2 = (T2 - T1)/T1*100, Delta3 = (T3 - T1)/T1*100, pool = "Passive") %>% select(soil_sample, plot_ID, Delta2, Delta3, pool)
+
+PoolsDelta_50_5000 <- active_50_5000 %>% full_join(passive_50_5000)
+
+active_20_10000 <- part_20_10000 %>% select(soil_sample,plot_ID,CO2_production_active,sample_date) %>%  spread(key=sample_date,value=CO2_production_active) %>% rename(T3 = "10/22/12", T2 = "9/27/12", T1 = "9/4/12") %>% mutate(Delta2 = (T2 - T1)/T1*100, Delta3 = (T3 - T1)/T1*100, pool = "Active") %>% select(soil_sample, plot_ID, Delta2, Delta3, pool)
+
+passive_20_10000 <- part_20_10000 %>% select(soil_sample,plot_ID,CO2_production_passive,sample_date) %>%  spread(key=sample_date,value=CO2_production_passive) %>% rename(T3 = "10/22/12", T2 = "9/27/12", T1 = "9/4/12") %>% mutate(Delta2 = (T2 - T1)/T1*100, Delta3 = (T3 - T1)/T1*100, pool = "Passive") %>% select(soil_sample, plot_ID, Delta2, Delta3, pool)
+
+PoolsDelta_20_10000 <- active_20_10000 %>% full_join(passive_20_10000)
+```
+
+Plot Delta2 vs Delta3 for the partitioned data
+```{r}
+#Turnover times = 50y and 5,000y
+
+legendtheme <- theme(legend.title = element_text(size=14)) +
+  theme(legend.text = element_text(size=12)) +
+  theme(legend.position = c(.75, .25)) 
+  #theme(legend.box.background = element_rect()) +
+  #theme(legend.box.margin = margin(6, 6, 6, 6))
+
+PoolsPlot_50_5000 <- ggplot(PoolsDelta_50_5000, aes(colour=pool, shape=pool, name="Carbon pool", y=as.numeric(Delta2), x=as.numeric(Delta3))) +
+  geom_point(size=2.5) +
+  ylab(expression(Delta[2]~"(%)")) +
+  xlab(expression(Delta[3]~"(%)")) +
+  scale_colour_manual(values=c("#4074DC","#FCAA3D"), name="Carbon pool") +
+  scale_shape_discrete(name="Carbon pool") +
+  xlim(-75, 25) +
+  ylim(-50,50) +
+  ggtitle('b') 
+
+PoolsPlot_50_5000 + plottheme + legendtheme
+
+#Turnover times = 20y and 10,000y
+PoolsPlot_20_10000 <- ggplot(PoolsDelta_20_10000, aes(colour=pool, shape=pool, name="Carbon pool", y=as.numeric(Delta2), x=as.numeric(Delta3))) +
+  geom_point(size=2.5) +
+  ylab(expression(Delta[2]~"(%)")) +
+  xlab(expression(Delta[3]~"(%)")) +
+  scale_colour_manual(values=c("#4074DC","#FCAA3D"), name="Carbon pool") +
+  scale_shape_discrete(name="Carbon pool") +
+  xlim(-75, 25) +
+  ylim(-50,50) +
+  ggtitle('b') 
+
+PoolsPlot_20_10000 + plottheme + legendtheme
+```
+
+Test whether the pools have different temprature senstivities using turnover times of 50 and 5000 years
+```{r}
+library(car)
+
+hist(PoolsDelta_50_5000$Delta3)
+hist(PoolsDelta_50_5000$Delta2)
+qqPlot(PoolsDelta_50_5000$Delta3, "norm")
+qqPlot(PoolsDelta_50_5000$Delta2, "norm")
+
+#Model including pool as a fix effect
+PoolsModel_50_5000_full <- lmer(Delta2 ~ Delta3 + pool + (1|plot_ID/soil_sample), data=PoolsDelta_50_5000, REML=F)
+summary(PoolsModel_50_5000_full)
+
+#Model without pool as fixed effect
+PoolsModel_50_5000_reduced <- lmer(Delta2 ~ Delta3 + (1|plot_ID/soil_sample), data=PoolsDelta_50_5000, REML=F)
+summary(PoolsModel_50_5000_reduced)
+
+#Likelihood ratio test to determine whether pool is a significant fixed effect
+anova(PoolsModel_50_5000_full, PoolsModel_50_5000_reduced)
+
+#Validate model
+plot(fitted(PoolsModel_50_5000_reduced),residuals(PoolsModel_50_5000_reduced))
+hist(residuals(PoolsModel_50_5000_reduced))
+qqnorm(residuals(PoolsModel_50_5000_reduced))
+qqline(residuals(PoolsModel_50_5000_reduced))
+```
+
+Test whether the pools have different temprature senstivities using turnover times of 20 and 10000 years
+```{r}
+hist(PoolsDelta_20_10000$Delta3)
+hist(PoolsDelta_20_10000$Delta2)
+qqPlot(PoolsDelta_20_10000$Delta3, "norm")
+qqPlot(PoolsDelta_20_10000$Delta2, "norm")
+
+#Model including pool as a fix effect
+PoolsModel_20_10000_full <- lmer(Delta2 ~ Delta3 + pool + (1|plot_ID/soil_sample), data=PoolsDelta_20_10000, REML=F)
+summary(PoolsModel_20_10000_full)
+
+#Model without pool as fixed effect
+PoolsModel_20_10000_reduced <- lmer(Delta2 ~ Delta3 + (1|plot_ID/soil_sample), data=PoolsDelta_20_10000, REML=F)
+summary(PoolsModel_20_10000_reduced)
+
+#Likelihood ratio test to determine whether pool is a significant fixed effect
+anova(PoolsModel_20_10000_full, PoolsModel_20_10000_reduced)
+
+#Validate model
+plot(fitted(PoolsModel_20_10000_reduced),residuals(PoolsModel_20_10000_reduced))
+hist(residuals(PoolsModel_20_10000_reduced))
+qqnorm(residuals(PoolsModel_20_10000_reduced))
+qqline(residuals(PoolsModel_20_10000_reduced))
+```
+
+Add trend lines to the pools plots
+```{r}
+#Turnover times = 50y and 5,000y
+PoolsPlot_50_5000 <- ggplot(PoolsDelta_50_5000, aes(colour=pool, shape=pool, name="Carbon pool", y=as.numeric(Delta2), x=as.numeric(Delta3))) +
+  geom_point(size=2.5) +
+  ylab(expression(Delta[2]~"(%)")) +
+  xlab(expression(Delta[3]~"(%)")) +
+  geom_abline(slope=summary(PoolsModel_50_5000_reduced)$coefficients[2,1], intercept=summary(PoolsModel_50_5000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey") +
+  scale_colour_manual(values=c("#4074DC","#FCAA3D"), name="Carbon pool") +
+  scale_shape_discrete(name="Carbon pool") +
+  xlim(-75, 25) +
+  ylim(-50,50) +
+  ggtitle('b') 
+
+print(PoolsPlot_50_5000 + plottheme + legendtheme)
+ggsave("PoolsPlot_50_5000.png", path="plots", width = 6.235,height = 6.13, dpi = 1200)
+
+
+#Turnover times = 20y and 10,000y
+PoolsPlot_20_10000 <- ggplot(PoolsDelta_20_10000, aes(colour=pool, shape=pool, name="Carbon pool", y=as.numeric(Delta2), x=as.numeric(Delta3))) +
+  geom_point(size=2.5) +
+  ylab(expression(Delta[2]~"(%)")) +
+  xlab(expression(Delta[3]~"(%)")) +
+  geom_abline(slope=summary(PoolsModel_20_10000_reduced)$coefficients[2,1], intercept=summary(PoolsModel_20_10000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey") +
+  scale_colour_manual(values=c("#4074DC","#FCAA3D"), name="Carbon pool") +
+  scale_shape_discrete(name="Carbon pool") +
+  xlim(-75, 25) +
+  ylim(-50,50) 
+
+print(PoolsPlot_20_10000 + plottheme + legendtheme)
+
+ggsave("PoolsPlot_20_10000.png", path="plots", width = 6.235,height = 6.13,dpi = 1200)
+```
+
+Arrange the plots for publication
+```{r}
+p1 <- BulkPlot + plottheme
+p2 <- PoolsPlot_50_5000 + plottheme + legendtheme
+combo <- grid.arrange(p1, p2, nrow=2, heights=c(6,6))
+ggsave("CombinedPlot.png", combo, path="plots", width = 6,height = 11,dpi = 1200)
+```
