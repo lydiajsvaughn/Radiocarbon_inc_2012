@@ -1,0 +1,104 @@
+---
+title: "TT calculation"
+author: "Lydia Vaughn"
+date: "14/03/2017"
+output: html_document
+---
+
+Create 14C curve for steady state post-bomb system for different turnover times
+
+```{r}
+atm <- read.csv('data/atmospheric_14C.csv', header=T, sep=',', na.strings=c('','no data'), fill=T, quote='', stringsAsFactors=F)
+```
+
+1. Set parameters
+```{r}
+# turnover times (in years) for which you want to calculate Delta14C. 
+years <- c(1:10, seq(100, 10000, 100))
+
+# max end of range of carbon residence times in plants, in years (0 years will be used as the minimum by default)
+plant_res <- 5
+
+# years your sample were collected
+collyear <- c(2012, 2013, 2014)
+```
+
+2. Make data frames for each specified turnover time and compile them in a list called Turnover
+```{r}
+#atm_res <- atm_res[atm_res$name!="NA",]
+#TT1 <- TT1[TT1$name!="NA",]
+#TTj <- TTj[TTj$name!="NA",]
+
+atm_res <- atm[atm$year.AD>1950,]
+atm_res$year.AD <- as.numeric(atm_res$year.AD)
+atm_res$year_plant.res <- atm_res$year.AD + plant_res
+
+TT1 <- atm_res
+TT1$TT <- years[1]
+TT1$Delta14C_permil <- as.numeric(TT1$Delta14C_permil)
+TT1$Fprimeatm <- TT1$Delta14C_permil/1000+1
+lambda <- 1.21*10^-4
+TT<-years[1]
+k <- 1/TT
+FCss <- k/(k+lambda)
+Delta14C_ss <- ((FCss/(exp(-(1951-1950)/8267)))-1)*1000
+TT1$FprimeC <- Delta14C_ss/1000 + 1
+for(i in 2:length(TT1$Delta14C_permil)){
+  TT1$FprimeC[i] <- k*TT1$Fprimeatm[i] + TT1$FprimeC[i-1] - k*TT1$FprimeC[i-1] - lambda*TT1$FprimeC[i-1]
+}
+TT1$Delta14C_res <- (TT1$FprimeC-1)*1000
+
+Turnover <- list(TT1)
+atm_res$Delta14C_permil <- as.numeric(atm_res$Delta14C_permil)
+
+for(j in 2:length(years)){
+  TT <- years[j]
+  TTj <- atm_res
+  TTj$TT <- TT
+  TTj$Fprimeatm <- TTj$Delta14C_permil/1000+1
+  k <- 1/TT
+  FCss <- k/(k+lambda)
+  Delta14C_ss <- ((FCss/(exp(-(2013-1950)/8267)))-1)*1000
+  TTj$FprimeC <- Delta14C_ss/1000 + 1
+  for(i in 2:length(TTj$Delta14C_permil)){
+    TTj$FprimeC[i] <- k*TTj$Fprimeatm[i] + TTj$FprimeC[i-1] - k*TTj$FprimeC[i-1] - lambda*TTj$FprimeC[i-1]
+TTj$Delta14C_res <- (TTj$FprimeC-1)*1000
+  }
+Turnover <- c(Turnover, list(TTj))
+}
+tail(data.frame(Turnover[1]))
+```
+
+3. Make a data frame with the turnover times and D14C values extracted from the data frames in the list
+```{r}
+for(j in 1:length(collyear)){
+  year <- collyear[j]
+
+
+  Delta14C <- numeric(length(Turnover))
+  for(i in 1:length(Turnover)){
+    Delta14C[i] <- data.frame(Turnover[i])[data.frame(Turnover[i])$year.AD==year,"Delta14C_res"]
+  }
+  Delta14C_plant.res <- numeric(length(Turnover))
+  for(i in 1:length(Turnover)){
+    Delta14C_plant.res[i] <- data.frame(Turnover[i])[data.frame(Turnover[i])$year_plant.res==year,"Delta14C_res"]
+  }
+  TT <- numeric(length(Turnover))
+  for(i in 1:length(Turnover)){
+    TT[i] <- data.frame(Turnover[i])[63,5]
+  }
+  assign(paste("TTwindows", year, sep="_"), data.frame(TT, Delta14C, Delta14C_plant.res))
+
+}
+```
+
+Identify where each 14C data point falls on the appropriate windows dataframe.
+
+Save whichever TTwindows data frames you want
+```{r}
+write.csv(TTwindows_2012, 'TTwindows/TTwindows_2012.csv', quote=FALSE, row.names=FALSE)
+write.csv(TTwindows_2013, 'TTwindows/TTwindows_2013.csv', quote=FALSE, row.names=FALSE)
+write.csv(TTwindows_2014, 'TTwindows/TTwindows_2014.csv', quote=FALSE, row.names=FALSE)
+
+
+```
