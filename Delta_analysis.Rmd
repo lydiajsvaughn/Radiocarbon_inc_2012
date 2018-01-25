@@ -5,6 +5,7 @@ date: "2018-01-18"
 output: html_document
 ---
 
+Data: radiocarbon_incubations_Barrow_2012_2014.csv includes CO2 flux rates and radiocarbon values from incubated soils.  File and metadata record can be accessed at http://dx.doi.org/10.5440/1364062
 ```{r}
 inc <- read.csv('data/Radiocarbon_incubations_Barrow_2012_2014.csv', stringsAsFactors=F)
 ```
