@@ -44,10 +44,9 @@ BulkPlot <- ggplot(BulkDelta, aes(y=Delta2, x=Delta3)) +
   ylab(expression(Delta[2]~"(%)")) +
   xlab(expression(Delta[3]~"(%)")) +
   xlim(-75, 25) +
-  ylim(-50,50) +
-  ggtitle('a') 
+  ylim(-50,50) 
 
-BulkPlot + plottheme
+BulkPlot + plottheme 
 ```
 
 Do the same for Delta2b and Delta3
@@ -57,8 +56,7 @@ BulkPlotb <- ggplot(BulkDelta, aes(y=Delta2b, x=Delta3)) +
   ylab(expression(Delta["2b"]~"(%)")) +
   xlab(expression(Delta[3]~"(%)")) +
   xlim(-80, 0) +
-  ylim(20,100) +
-  ggtitle('a') 
+  ylim(20,100) 
 
 BulkPlotb + plottheme
 ```
@@ -77,32 +75,23 @@ summary(BulkModelb)
 
 Add trend line to BulkPlot
 ```{r}
-BulkPlot <- ggplot(BulkDelta, aes(y=Delta2, x=Delta3)) +
-  geom_point(size=2.5, color="#27A36B") +
-  ylab(expression(Delta[2]~"(%)")) +
-  xlab(expression(Delta[3]~"(%)")) +
-  xlim(-75, 25) +
-  ylim(-50,50) +
-  ggtitle('a') +
+BulkPlot_final <- BulkPlot + 
+  plottheme +
   geom_abline(slope=summary(BulkModel)$coefficients[2,1], intercept=summary(BulkModel)$coefficients[1,1], lty="dashed", colour="dimgrey") 
 
-BulkPlot + plottheme
+print(BulkPlot_final)
+
 ggsave("BulkPlot.png", path="plots", width = 6,height = 6,dpi = 300)
 ```
 
 Do the same for BulkPlotb
 ```{r}
-BulkPlotb <- ggplot(BulkDelta, aes(y=Delta2b, x=Delta3)) +
-  geom_point(size=2.5, color="#27A36B") +
-  ylab(expression(Delta["2b"]~"(%)")) +
-  xlab(expression(Delta[3]~"(%)")) +
-  xlim(-80, 0) +
-  ylim(20,100) +
-  ggtitle('a') +
+BulkPlotb_final <- BulkPlotb + 
+  plottheme +
   geom_abline(slope=summary(BulkModelb)$coefficients[2,1], intercept=summary(BulkModelb)$coefficients[1,1], lty="dashed", colour="dimgrey") 
 
+print(BulkPlotb_final)
 
-BulkPlotb + plottheme
 ggsave("BulkPlotb.png", path="plots", width = 6,height = 6,dpi = 300)
 ```
 
@@ -145,8 +134,7 @@ PoolsPlot_50_5000 <- ggplot(PoolsDelta_50_5000, aes(colour=pool, shape=pool, nam
   scale_colour_manual(values=c("#4074DC","#FCAA3D"), name="Carbon pool", labels=c("Active (TT = 50 y)", "Passive (TT = 5,000 y)")) +
   scale_shape_discrete(name="Carbon pool", labels=c("Active (TT = 50 y)", "Passive (TT = 5,000 y)")) +
   xlim(-75, 25) +
-  ylim(-50,50) +
-  ggtitle('b') 
+  ylim(-50,50) 
 
 PoolsPlot_50_5000 + plottheme + legendtheme
 
@@ -155,11 +143,10 @@ PoolsPlot_20_10000 <- ggplot(PoolsDelta_20_10000, aes(colour=pool, shape=pool, n
   geom_point(size=2.5) +
   ylab(expression(Delta[2]~"(%)")) +
   xlab(expression(Delta[3]~"(%)")) +
-  scale_colour_manual(values=c("#4074DC","#FCAA3D"), name="Carbon pool", labels=c("Active (TT = 20 y)", "Passive (TT = 10,000 y)")) +
+  scale_colour_manual(values=c("mediumseagreen","mediumslateblue"), name="Carbon pool", labels=c("Active (TT = 20 y)", "Passive (TT = 10,000 y)")) +
   scale_shape_discrete(name="Carbon pool", labels=c("Active (TT = 20 y)", "Passive (TT = 10,000 y)")) +
   xlim(-75, 25) +
-  ylim(-50,50) +
-  ggtitle('b') 
+  ylim(-50,50) 
 
 PoolsPlot_20_10000 + plottheme + legendtheme
 ```
@@ -178,8 +165,7 @@ PoolsPlotb_50_5000 <- ggplot(PoolsDelta_50_5000, aes(colour=pool, shape=pool, na
   scale_colour_manual(values=c("#4074DC","#FCAA3D"), name="Carbon pool", labels=c("Active (TT = 50 y)", "Passive (TT = 5,000 y)")) +
   scale_shape_discrete(name="Carbon pool", labels=c("Active (TT = 50 y)", "Passive (TT = 5,000 y)")) +
   xlim(-80, 0) +
-  ylim(20,100) +
-  ggtitle('b') 
+  ylim(20,100) 
 
 PoolsPlotb_50_5000 + plottheme + legendthemeb
 
@@ -188,11 +174,10 @@ PoolsPlotb_20_10000 <- ggplot(PoolsDelta_20_10000, aes(colour=pool, shape=pool, 
   geom_point(size=2.5) +
   ylab(expression(Delta["2b"]~"(%)")) +
   xlab(expression(Delta[3]~"(%)")) +
-  scale_colour_manual(values=c("#4074DC","#FCAA3D"), name="Carbon pool", labels=c("Active (TT = 20 y)", "Passive (TT = 10,000 y)")) +
+  scale_colour_manual(values=c("mediumseagreen","mediumslateblue"), name="Carbon pool", labels=c("Active (TT = 20 y)", "Passive (TT = 10,000 y)")) +
   scale_shape_discrete(name="Carbon pool", labels=c("Active (TT = 20 y)", "Passive (TT = 10,000 y)")) +
   xlim(-80, 0) +
-  ylim(20,100) +
-  ggtitle('b') 
+  ylim(20,100) 
 
 PoolsPlotb_20_10000 + plottheme + legendthemeb
 ```
@@ -298,80 +283,61 @@ qqline(residuals(PoolsModelb_20_10000_reduced))
 Add trend lines to the pools plots using Delta2 and Delta3
 ```{r}
 #Turnover times = 50y and 5,000y
-PoolsPlot_50_5000 <- ggplot(PoolsDelta_50_5000, aes(colour=pool, shape=pool, name="Carbon pool", y=as.numeric(Delta2), x=as.numeric(Delta3))) +
-  geom_point(size=2.5) +
-  ylab(expression(Delta[2]~"(%)")) +
-  xlab(expression(Delta[3]~"(%)")) +
-  geom_abline(slope=summary(PoolsModel_50_5000_reduced)$coefficients[2,1], intercept=summary(PoolsModel_50_5000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey") +
-  scale_colour_manual(values=c("#4074DC","#FCAA3D"), name="Carbon pool", labels=c("Active (TT = 50 y)", "Passive (TT = 5,000 y)")) +
-  scale_shape_discrete(name="Carbon pool", labels=c("Active (TT = 50 y)", "Passive (TT = 5,000 y)")) +
-  xlim(-75, 25) +
-  ylim(-50,50) +
-  ggtitle('b') 
+PoolsPlot_50_5000_final <- PoolsPlot_50_5000 + 
+        plottheme + 
+        legendtheme +
+        geom_abline(slope=summary(PoolsModel_50_5000_reduced)$coefficients[2,1], intercept=summary(PoolsModel_50_5000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey") 
 
-print(PoolsPlot_50_5000 + plottheme + legendtheme)
+print(PoolsPlot_50_5000_final)
 ggsave("PoolsPlot_50_5000.png", path="plots", width = 6.235,height = 6.13, dpi = 1200)
 
-
 #Turnover times = 20y and 10,000y
-PoolsPlot_20_10000 <- ggplot(PoolsDelta_20_10000, aes(colour=pool, shape=pool, name="Carbon pool", y=as.numeric(Delta2), x=as.numeric(Delta3))) +
-  geom_point(size=2.5) +
-  ylab(expression(Delta[2]~"(%)")) +
-  xlab(expression(Delta[3]~"(%)")) +
-  geom_abline(slope=summary(PoolsModel_20_10000_reduced)$coefficients[2,1], intercept=summary(PoolsModel_20_10000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey") +
-  scale_colour_manual(values=c("#4074DC","#FCAA3D"), name="Carbon pool", labels=c("Active (TT = 20 y)", "Passive (TT = 10,000 y)")) +
-  scale_shape_discrete(name="Carbon pool", labels=c("Active (TT = 20 y)", "Passive (TT = 10,000 y)")) +
-  xlim(-75, 25) +
-  ylim(-50,50) 
+PoolsPlot_20_10000_final <- PoolsPlot_20_10000 + 
+        plottheme + 
+        legendtheme +
+        geom_abline(slope=summary(PoolsModel_20_10000_reduced)$coefficients[2,1], intercept=summary(PoolsModel_20_10000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey")
 
-print(PoolsPlot_20_10000 + plottheme + legendtheme)
-
+print(PoolsPlot_20_10000_final)
 ggsave("PoolsPlot_20_10000.png", path="plots", width = 6.235,height = 6.13,dpi = 1200)
 ```
 
 Do the same with the pools plots using Delta2b and Delta3
 ```{r}
 #Turnover times = 50y and 5,000y
-PoolsPlotb_50_5000 <- ggplot(PoolsDelta_50_5000, aes(colour=pool, shape=pool, name="Carbon pool", y=as.numeric(Delta2b), x=as.numeric(Delta3))) +
-  geom_point(size=2.5) +
-  ylab(expression(Delta["2b"]~"(%)")) +
-  xlab(expression(Delta[3]~"(%)")) +
-  geom_abline(slope=summary(PoolsModelb_50_5000_reduced)$coefficients[2,1], intercept=summary(PoolsModelb_50_5000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey") +
-  scale_colour_manual(values=c("#4074DC","#FCAA3D"), name="Carbon pool", labels=c("Active (TT = 50 y)", "Passive (TT = 5,000 y)")) +
-  scale_shape_discrete(name="Carbon pool", labels=c("Active (TT = 50 y)", "Passive (TT = 5,000 y)")) +
-  xlim(-80, 0) +
-  ylim(20,100) +
-  ggtitle('b') 
+PoolsPlotb_50_5000_final <- PoolsPlotb_50_5000 + 
+        plottheme + 
+        legendthemeb +
+        geom_abline(slope=summary(PoolsModelb_50_5000_reduced)$coefficients[2,1], intercept=summary(PoolsModelb_50_5000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey")
 
-print(PoolsPlotb_50_5000 + plottheme + legendthemeb)
+print(PoolsPlotb_50_5000_final)
 ggsave("PoolsPlotb_50_5000.png", path="plots", width = 6.235,height = 6.13, dpi = 1200)
 
 
 #Turnover times = 20y and 10,000y
-PoolsPlotb_20_10000 <- ggplot(PoolsDelta_20_10000, aes(colour=pool, shape=pool, name="Carbon pool", y=as.numeric(Delta2b), x=as.numeric(Delta3))) +
-  geom_point(size=2.5) +
-  ylab(expression(Delta["2b"]~"(%)")) +
-  xlab(expression(Delta[3]~"(%)")) +
-  geom_abline(slope=summary(PoolsModelb_20_10000_reduced)$coefficients[2,1], intercept=summary(PoolsModelb_20_10000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey") +
-  scale_colour_manual(values=c("#4074DC","#FCAA3D"), name="Carbon pool", labels=c("Active (TT = 20 y)", "Passive (TT = 10,000 y)")) +
-  scale_shape_discrete(name="Carbon pool", labels=c("Active (TT = 20 y)", "Passive (TT = 10,000 y)")) +
-  xlim(-80, 0) +
-  ylim(20,100) 
+PoolsPlotb_20_10000_final <- PoolsPlotb_20_10000 + 
+        plottheme + 
+        legendthemeb +
+        geom_abline(slope=summary(PoolsModelb_20_10000_reduced)$coefficients[2,1], intercept=summary(PoolsModelb_20_10000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey") 
 
-print(PoolsPlotb_20_10000 + plottheme + legendthemeb)
-
+print(PoolsPlotb_20_10000_final)
 ggsave("PoolsPlotb_20_10000.png", path="plots", width = 6.235,height = 6.13,dpi = 1200)
 ```
 
 Arrange the plots for publication
 ```{r}
-p1 <- BulkPlot + plottheme
-p2 <- PoolsPlot_50_5000 + plottheme + legendtheme
+p1 <- BulkPlot_final + ggtitle('a')
+p2 <- PoolsPlot_50_5000_final + ggtitle('b')
 combo <- grid.arrange(p1, p2, nrow=2, heights=c(6,6))
 ggsave("CombinedPlot.png", combo, path="plots", width = 6,height = 11,dpi = 1200)
 
-p3 <- BulkPlotb + plottheme
-p4 <- PoolsPlotb_50_5000 + plottheme + legendthemeb
+p3 <- BulkPlotb_final + ggtitle('a')
+p4 <- PoolsPlotb_50_5000_final + ggtitle('b')
 combob <- grid.arrange(p3, p4, nrow=2, heights=c(6,6))
 ggsave("CombinedPlotb.png", combob, path="plots", width = 6,height = 11,dpi = 1200)
+
+p5 <- PoolsPlot_50_5000_final + ggtitle('a')
+p6 <- PoolsPlot_20_10000_final + ggtitle('b')
+comboc <- grid.arrange(p5, p6, nrow=2, heights=c(6,6))
+ggsave("CombinedPlotc.png", combob, path="plots", width = 6,height = 11,dpi = 1200)
+
 ```
