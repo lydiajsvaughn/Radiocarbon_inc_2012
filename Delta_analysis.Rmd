@@ -31,9 +31,9 @@ Design a theme for all plots
 ```{r}
 plottheme <- theme_bw() + 
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank()) +
-  theme(axis.text = element_text(color="black", size=12)) +
-  theme(axis.title = element_text(size=14)) +
-  theme(plot.title = element_text(colour = "black", size=14, hjust = -0.1)) 
+  theme(axis.text = element_text(color="black", size=8)) +
+  theme(axis.title = element_text(size=10)) +
+  theme(plot.title = element_text(colour = "black", size=10, hjust = -0.15, face = "bold")) 
 
 ```
 
@@ -81,7 +81,7 @@ BulkPlot_final <- BulkPlot +
 
 print(BulkPlot_final)
 
-ggsave("BulkPlot.png", path="plots", width = 6,height = 6,dpi = 300)
+ggsave("BulkPlot.png", path="plots", width = 4,height = 3.93,dpi = 300)
 ```
 
 Do the same for BulkPlotb
@@ -92,7 +92,7 @@ BulkPlotb_final <- BulkPlotb +
 
 print(BulkPlotb_final)
 
-ggsave("BulkPlotb.png", path="plots", width = 6,height = 6,dpi = 300)
+ggsave("BulkPlotb.png", path="plots", width = 4,height = 3.93,dpi = 300)
 ```
 
 Partition bulk CO2 fluxes into passive and active fractions with turnover times of (a) 50 and 5000 years and (b) 20 and 10000 years
@@ -121,9 +121,9 @@ Plot Delta2 vs Delta3 for the partitioned data
 ```{r}
 #Turnover times = 50y and 5,000y
 
-legendtheme <- theme(legend.title = element_text(size=14)) +
-  theme(legend.text = element_text(size=12)) +
-  theme(legend.position = c(.75, .25)) 
+legendtheme <- theme(legend.title = element_text(size=10)) +
+  theme(legend.text = element_text(size=8)) +
+  theme(legend.position = c(.7, .25)) 
   #theme(legend.box.background = element_rect()) +
   #theme(legend.box.margin = margin(6, 6, 6, 6))
 
@@ -153,9 +153,9 @@ PoolsPlot_20_10000 + plottheme + legendtheme
 
 Do the same with Delta2b vs Delta3
 ```{r}
-legendthemeb <- theme(legend.title = element_text(size=14)) +
-  theme(legend.text = element_text(size=12)) +
-  theme(legend.position = c(.25, .25)) 
+legendthemeb <- theme(legend.title = element_text(size=10)) +
+  theme(legend.text = element_text(size=8)) +
+  theme(legend.position = c(.3, .25)) 
 
 #Turnover times = 50y and 5,000y
 PoolsPlotb_50_5000 <- ggplot(PoolsDelta_50_5000, aes(colour=pool, shape=pool, name="Carbon pool", y=as.numeric(Delta2b), x=as.numeric(Delta3))) +
@@ -289,7 +289,7 @@ PoolsPlot_50_5000_final <- PoolsPlot_50_5000 +
         geom_abline(slope=summary(PoolsModel_50_5000_reduced)$coefficients[2,1], intercept=summary(PoolsModel_50_5000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey") 
 
 print(PoolsPlot_50_5000_final)
-ggsave("PoolsPlot_50_5000.png", path="plots", width = 6.235,height = 6.13, dpi = 1200)
+ggsave("PoolsPlot_50_5000.png", path="plots", width = 4,height = 3.93, dpi = 300)
 
 #Turnover times = 20y and 10,000y
 PoolsPlot_20_10000_final <- PoolsPlot_20_10000 + 
@@ -298,7 +298,7 @@ PoolsPlot_20_10000_final <- PoolsPlot_20_10000 +
         geom_abline(slope=summary(PoolsModel_20_10000_reduced)$coefficients[2,1], intercept=summary(PoolsModel_20_10000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey")
 
 print(PoolsPlot_20_10000_final)
-ggsave("PoolsPlot_20_10000.png", path="plots", width = 6.235,height = 6.13,dpi = 1200)
+ggsave("PoolsPlot_20_10000.png", path="plots", width = 4,height = 3.93,dpi = 300)
 ```
 
 Do the same with the pools plots using Delta2b and Delta3
@@ -310,7 +310,7 @@ PoolsPlotb_50_5000_final <- PoolsPlotb_50_5000 +
         geom_abline(slope=summary(PoolsModelb_50_5000_reduced)$coefficients[2,1], intercept=summary(PoolsModelb_50_5000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey")
 
 print(PoolsPlotb_50_5000_final)
-ggsave("PoolsPlotb_50_5000.png", path="plots", width = 6.235,height = 6.13, dpi = 1200)
+ggsave("PoolsPlotb_50_5000.png", path="plots", width = 4,height = 3.93, dpi = 300)
 
 
 #Turnover times = 20y and 10,000y
@@ -320,24 +320,24 @@ PoolsPlotb_20_10000_final <- PoolsPlotb_20_10000 +
         geom_abline(slope=summary(PoolsModelb_20_10000_reduced)$coefficients[2,1], intercept=summary(PoolsModelb_20_10000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey") 
 
 print(PoolsPlotb_20_10000_final)
-ggsave("PoolsPlotb_20_10000.png", path="plots", width = 6.235,height = 6.13,dpi = 1200)
+ggsave("PoolsPlotb_20_10000.png", path="plots", width = 4,height = 3.93,dpi = 300)
 ```
 
 Arrange the plots for publication
 ```{r}
-p1 <- BulkPlot_final + ggtitle('a')
-p2 <- PoolsPlot_50_5000_final + ggtitle('b')
-combo <- grid.arrange(p1, p2, nrow=2, heights=c(6,6))
-ggsave("CombinedPlot.png", combo, path="plots", width = 6,height = 11,dpi = 1200)
+p1 <- BulkPlot_final + ggtitle('a') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+p2 <- PoolsPlot_50_5000_final + ggtitle('b') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+combo <- grid.arrange(p1, p2, ncol=2, widths=c(4,4))
+ggsave("CombinedPlot.png", combo, path="plots", width = 8,height = 4,dpi = 300)
 
-p3 <- BulkPlotb_final + ggtitle('a')
-p4 <- PoolsPlotb_50_5000_final + ggtitle('b')
-combob <- grid.arrange(p3, p4, nrow=2, heights=c(6,6))
-ggsave("CombinedPlotb.png", combob, path="plots", width = 6,height = 11,dpi = 1200)
+p3 <- BulkPlotb_final + ggtitle('a') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+p4 <- PoolsPlotb_50_5000_final + ggtitle('b') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+combob <- grid.arrange(p3, p4, ncol=2, widths=c(4,4))
+ggsave("CombinedPlotb.png", combob, path="plots", width = 8,height = 4,dpi = 300)
 
-p5 <- PoolsPlot_50_5000_final + ggtitle('a')
-p6 <- PoolsPlot_20_10000_final + ggtitle('b')
-comboc <- grid.arrange(p5, p6, nrow=2, heights=c(6,6))
-ggsave("CombinedPlotc.png", combob, path="plots", width = 6,height = 11,dpi = 1200)
+p5 <- PoolsPlot_50_5000_final + ggtitle('a') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+p6 <- PoolsPlot_20_10000_final + ggtitle('b') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+comboc <- grid.arrange(p5, p6, ncol=2, widths=c(4,4))
+ggsave("CombinedPlotc.png", comboc, path="plots", width = 8,height = 4,dpi = 300)
 
 ```
