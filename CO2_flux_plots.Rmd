@@ -1,0 +1,86 @@
+---
+title: "2012 incubation CO2 flux plots"
+author: "Lydia Vaughn"
+date: "February 6, 2018"
+output: html_document
+---
+
+```{r}
+inc <- read.csv('data/radiocarbon_incubation_Barrow_2012.csv', stringsAsFactors=F)
+naming <- read.csv('data/naming.csv', header=T, sep=',', stringsAsFactors=F)
+mass <- read.csv('data/soil_mass.csv', header=T, sep=',', stringsAsFactors=F)
+```
+
+```{r}
+library(tidyr)
+library(lubridate)
+```
+
+Make a column identifying each layer as shallow, middle, or deep
+```{r}
+inc <- inc %>% group_by(plot_ID) %>% mutate(depth_increment = ifelse(layer_top==min(layer_top), "Shallow", ifelse(layer_bot==max(layer_bot), "Deep", "Middle"))) 
+
+inc$depth_increment <- factor(inc$depth_increment, levels=c("Shallow", "Middle", "Deep"), ordered=T)
+
+```
+
+Calculate CO2 flux in mg C per day and format dates
+```{r}
+inc <- inc %>% left_join(mass) %>% mutate(CO2flux_total = CO2_production * mass_drysoil_g, sample_date = as.Date(sample_date, '%m/%d/%y'))
+```
+
+Plot CO2 production per in mg C day-1
+```{r}
+plottheme <- theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank()) +
+  theme(axis.text.y = element_text(color="black", size=8)) +
+  theme(axis.text.x = element_text(color="black", size=8)) +
+  theme(axis.title.y = element_text(color="black", size=10)) +
+  theme(axis.title.x = element_blank()) +
+  theme(legend.text = element_text(size=8)) +
+  theme(legend.title = element_text(size=10)) 
+
+facettheme <- theme(strip.text = element_text(size=10)) +
+  theme(strip.background = element_rect(colour="white", fill="white")) +
+  theme(panel.spacing = unit(.5, "lines")) 
+
+
+fluxplot <- ggplot(inc %>% subset(!is.na(CO2flux_total)), aes(fill=depth_increment, y=CO2flux_total, x=as.factor(sample_date))) +
+  geom_bar(stat="identity", color="white") +
+  ylab(expression(CO[2]~evolution~rate~(mg~C~d^-1))) +
+  scale_fill_manual(values=c("#6387A6","#80AE7F",'#F2DD72'), breaks=c("Shallow","Middle","Deep"), labels=c("Shallow","Middle","Deep"), name="Depth increment") +
+  geom_hline(yintercept=0, color="dimgrey", size=0.3) +
+  facet_wrap( ~ plot_ID, ncol=3, labeller=as_labeller(setNames(naming[,2], naming[,1]))) + 
+  scale_x_discrete(labels=c(expression(P1~(5*degree*C)), expression(P2~(10*degree*C)), expression(P3~(5*degree*C))))
+
+print(fluxplot + plottheme + facettheme)
+ggsave("CO2fluxplot.png", path="plots", width = 8, height = 6, dpi = 300)
+```
+
+Plot CO2 production in mg C gsoil-1 d-1
+```{r}
+fluxplot2 <- ggplot(inc %>% subset(!is.na(CO2flux_total)), aes(fill=depth_increment, y=CO2_production, x=as.factor(sample_date))) +
+  geom_bar(stat="identity", color="white") +
+  ylab(expression(CO[2]~evolution~rate~(mg~C~g["soil"]^{-1}~d^-1))) +
+  scale_fill_manual(values=c("#6387A6","#80AE7F",'#F2DD72'), breaks=c("Shallow","Middle","Deep"), labels=c("Shallow","Middle","Deep"), name="Depth increment") +
+  geom_hline(yintercept=0, color="dimgrey", size=0.3) +
+  facet_wrap( ~ plot_ID, ncol=3, labeller=as_labeller(setNames(naming[,2], naming[,1]))) + 
+  scale_x_discrete(labels=c(expression(P1~(5*degree*C)), expression(P2~(10*degree*C)), expression(P3~(5*degree*C))))
+
+print(fluxplot2 + plottheme + facettheme)
+```
+
+plot CO2 production in mg C gC-1 d-1
+```{r}
+flux <- inc %>% subset(sample_type == "CO2") %>% select(-oc) %>% left_join(inc %>% subset(sample_type == "soil") %>% group_by(plot_ID, layer_top, layer_bot) %>% summarize(meanC = mean(oc))) 
+
+fluxplot3 <- ggplot(flux %>% subset(!is.na(CO2flux_total)), aes(fill=depth_increment, y=CO2_production/meanC, x=as.factor(sample_date))) +
+  geom_bar(stat="identity", color="white") +
+  ylab(expression(CO[2]~evolution~rate~(mg~C~g~C^{-1}~d^-1))) +
+  scale_fill_manual(values=c("#6387A6","#80AE7F",'#F2DD72'), breaks=c("Shallow","Middle","Deep"), labels=c("Shallow","Middle","Deep"), name="Depth increment") +
+  geom_hline(yintercept=0, color="dimgrey", size=0.3) +
+  facet_wrap( ~ plot_ID, ncol=3, labeller=as_labeller(setNames(naming[,2], naming[,1]))) + 
+  scale_x_discrete(labels=c(expression(P1~(5*degree*C)), expression(P2~(10*degree*C)), expression(P3~(5*degree*C))))
+
+print(fluxplot3 + plottheme + facettheme)
+```
