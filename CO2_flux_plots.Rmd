@@ -1,5 +1,5 @@
 ---
-title: "2012 incubation CO2 flux plots"
+title: "2012 incubation CO2 flux and 14C plots"
 author: "Lydia Vaughn"
 date: "February 6, 2018"
 output: html_document
@@ -34,11 +34,13 @@ Plot CO2 production per in mg C day-1
 plottheme <- theme_bw() + 
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank()) +
   theme(axis.text.y = element_text(color="black", size=8)) +
-  theme(axis.text.x = element_text(color="black", size=8)) +
+  theme(axis.text.x = element_text(color="black", size=10, angle=90, vjust=0.5)) +
   theme(axis.title.y = element_text(color="black", size=10)) +
   theme(axis.title.x = element_blank()) +
   theme(legend.text = element_text(size=8)) +
   theme(legend.title = element_text(size=10)) 
+
+plottheme2 <- plottheme + theme(axis.text.x = element_text(size=10))
 
 facettheme <- theme(strip.text = element_text(size=10)) +
   theme(strip.background = element_rect(colour="white", fill="white")) +
@@ -51,10 +53,10 @@ fluxplot <- ggplot(inc %>% subset(!is.na(CO2flux_total)), aes(fill=depth_increme
   scale_fill_manual(values=c("#6387A6","#80AE7F",'#F2DD72'), breaks=c("Shallow","Middle","Deep"), labels=c("Shallow","Middle","Deep"), name="Depth increment") +
   geom_hline(yintercept=0, color="dimgrey", size=0.3) +
   facet_wrap( ~ plot_ID, ncol=3, labeller=as_labeller(setNames(naming[,2], naming[,1]))) + 
-  scale_x_discrete(labels=c(expression(P1~(5*degree*C)), expression(P2~(10*degree*C)), expression(P3~(5*degree*C))))
+  scale_x_discrete(labels=c(expression(P1~(5*degree*C)), expression(P2~(10*degree*C)), expression(P3~(5*degree*C)))) 
 
 print(fluxplot + plottheme + facettheme)
-ggsave("CO2fluxplot.png", path="plots", width = 8, height = 6, dpi = 300)
+ggsave("CO2fluxplot.png", path="plots", width = 6, height = 5, dpi = 300)
 ```
 
 Plot CO2 production in mg C gsoil-1 d-1
@@ -76,11 +78,79 @@ flux <- inc %>% subset(sample_type == "CO2") %>% select(-oc) %>% left_join(inc %
 
 fluxplot3 <- ggplot(flux %>% subset(!is.na(CO2flux_total)), aes(fill=depth_increment, y=CO2_production/meanC, x=as.factor(sample_date))) +
   geom_bar(stat="identity", color="white") +
-  ylab(expression(CO[2]~evolution~rate~(mg~C~g~C^{-1}~d^-1))) +
+  ylab(expression(CO[2]~evolution~rate~(mg~C~g~C^-1~d^-1))) +
   scale_fill_manual(values=c("#6387A6","#80AE7F",'#F2DD72'), breaks=c("Shallow","Middle","Deep"), labels=c("Shallow","Middle","Deep"), name="Depth increment") +
   geom_hline(yintercept=0, color="dimgrey", size=0.3) +
   facet_wrap( ~ plot_ID, ncol=3, labeller=as_labeller(setNames(naming[,2], naming[,1]))) + 
   scale_x_discrete(labels=c(expression(P1~(5*degree*C)), expression(P2~(10*degree*C)), expression(P3~(5*degree*C))))
 
 print(fluxplot3 + plottheme + facettheme)
+```
+
+Plot the radiocarbon contents in the same format, but not with stacked bars
+```{r}
+C14 <- flux %>% subset(!is.na(X14C)) %>% left_join(flux %>% subset(!is.na(X14C)) %>% group_by(plot_ID, sample_date) %>% summarize(nsample = length(X14C)))
+
+C14plot <- ggplot(C14, aes(fill=depth_increment, y=X14C, x=as.factor(sample_date))) +
+  geom_bar(aes(width = .2*nsample), stat="identity", position="dodge") +
+  ylab(expression(Delta^14*C[CO2] ~ ("\u2030"))) +
+  scale_fill_manual(values=c("#6387A6","#80AE7F",'#F2DD72'), breaks=c("Shallow","Middle","Deep"), labels=c("Shallow","Middle","Deep"), name="Depth increment") +
+  geom_hline(yintercept=0, color="dimgrey", size=0.3) +
+  facet_wrap( ~ plot_ID, ncol=3, labeller=as_labeller(setNames(naming[,2], naming[,1]))) + 
+  scale_x_discrete(labels=c(expression(P1~(5*degree*C)), expression(P2~(10*degree*C)), expression(P3~(5*degree*C))))
+
+print(C14plot + plottheme + facettheme)
+```
+
+Plot the change in radiocarbon between periods 1 and 2 and periods 1 and 3
+```{r}
+C14wide <- C14 %>% select(plot_ID, sample_date, X14C, depth_increment) %>% spread(key=sample_date,value=X14C) %>% rename(P3 = "2012-10-22", P2 = "2012-09-27", P1 = "2012-09-04") %>% mutate(P3P1 = P3 - P1, P2P1 = P2 - P1)
+
+C14long <- C14wide %>% select(plot_ID, depth_increment, P3P1, P2P1) %>% gather(key="Period", value="C14diff", 3:4)
+
+#Box plot, only shallow and deep increments
+C14box <- ggplot(C14long %>% subset(depth_increment != "Middle"), aes(fill=depth_increment, y=C14diff, x=Period)) +
+  geom_hline(yintercept=0, color="black", size=0.3) +
+  geom_boxplot(position = position_dodge(0.8)) +
+  scale_fill_manual(values=c("#E5A32F","tomato3"), name="Depth increment", labels=c("Shallow","Deep")) +
+  ylab(expression("Change in"~Delta^14*C[CO2] ~ ("\u2030"))) +
+  scale_x_discrete(labels=c("Periods 1 to 2", "Periods 1 to 3")) 
+
+print(C14box + plottheme)
+
+#Bar chart, only shallow and deep increments
+C14depths <- C14long %>% subset(depth_increment != "Middle" & !is.na(C14diff)) %>% group_by(Period, depth_increment) %>% summarize(meanC14diff = mean(C14diff), sdC14diff = sd(C14diff), nC14diff = length(C14diff)) %>% mutate(seC14diff = sdC14diff/nC14diff^0.5)
+
+C14bar <- ggplot(C14depths, aes(fill = depth_increment, y=meanC14diff, x=Period)) +
+  geom_bar(stat="identity", position=position_dodge(0.8), width=0.75) +
+  scale_fill_manual(values=c("#E5A32F","tomato3"), name="Depth increment", labels=c("Shallow","Deep")) +
+  ylab(expression("Change in"~Delta^14*C[CO2] ~ ("\u2030"))) +
+  scale_x_discrete(labels=c("Periods 1 to 2", "Periods 1 to 3")) +
+  geom_errorbar(aes(ymin = meanC14diff - seC14diff, ymax = meanC14diff + seC14diff), position = position_dodge(0.8), width = 0.2, size = 0.4) +
+  geom_hline(yintercept=0, color="black", size=0.3) 
+print(C14bar + plottheme)
+
+#Box plot, all increments
+C14box2 <- ggplot(C14long, aes(y=C14diff, x=Period)) +
+  geom_hline(yintercept=0, color="black", size=0.3) +
+  geom_boxplot(fill="tomato3") +
+  ylab(expression("Change in"~Delta^14*C[CO2] ~ ("\u2030"))) +
+  scale_x_discrete(labels=c("Periods 1 to 2", "Periods 1 to 3")) 
+
+print(C14box2 + plottheme)
+
+#Bar chart all increments
+C14summary <- C14long %>% subset(!is.na(C14diff)) %>% group_by(Period) %>% summarize(meanC14diff = mean(C14diff), sdC14diff = sd(C14diff), nC14diff = length(C14diff)) %>% mutate(seC14diff = sdC14diff/nC14diff^0.5)
+
+C14bar2 <- ggplot(C14summary, aes(y=meanC14diff, x=Period)) +
+  geom_bar(stat="identity", fill="tomato3", width=0.75) +
+  ylab(expression("Change in"~Delta^14*C[CO2] ~ ("\u2030"))) +
+  scale_x_discrete(labels=c("Periods 1 to 2", "Periods 1 to 3")) +
+  geom_errorbar(aes(ymin = meanC14diff - seC14diff, ymax = meanC14diff + seC14diff), width = 0.2, size = 0.3) +
+  geom_hline(yintercept=0, color="black", size=0.2) 
+
+print(C14bar2 + plottheme2)
+ggsave("C14diffplot.png", path="plots", width = 4, height = 3, dpi = 300)
+
+
 ```
