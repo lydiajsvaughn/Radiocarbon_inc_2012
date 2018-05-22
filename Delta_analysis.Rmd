@@ -333,23 +333,23 @@ Arrange the plots for publication
 p1 <- BulkPlot_final + ggtitle('a') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 p2 <- PoolsPlot_50_5000_final + ggtitle('b') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 combo <- grid.arrange(p1, p2, ncol=2, widths=c(4,4))
-ggsave("CombinedPlot.png", combo, path="plots", width = 6,height = 3,dpi = 300)
+ggsave("CombinedPlot.png", combo, path="plots", width = 6,height = 3,dpi = 600)
 
 p3 <- BulkPlotb_final + ggtitle('a') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 p4 <- PoolsPlotb_50_5000_final + ggtitle('b') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 combob <- grid.arrange(p3, p4, ncol=2, widths=c(4,4))
-ggsave("CombinedPlotb.png", combob, path="plots", width = 6,height = 3,dpi = 300)
+ggsave("CombinedPlotb.png", combob, path="plots", width = 6,height = 3,dpi = 600)
 
 p5 <- PoolsPlot_50_5000_final + ggtitle('a') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 p6 <- PoolsPlot_20_10000_final + ggtitle('b') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 comboc <- grid.arrange(p5, p6, ncol=2, widths=c(4,4))
-ggsave("CombinedPlotc.png", comboc, path="plots", width = 6,height = 3,dpi = 300)
+ggsave("CombinedPlotc.png", comboc, path="plots", width = 6,height = 3,dpi = 600)
 
 p7 <- BulkPlotb_final + ggtitle('b') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 p8 <- PoolsPlot_50_5000_final + ggtitle('c') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 p9 <- PoolsPlotb_50_5000_final + ggtitle('d') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 combod <- grid.arrange(p1, p7, p8, p9, ncol=2, widths=c(4,4))
-ggsave("CombinedPlotd.png", combod, path="plots", width = 6,height = 6,dpi = 300)
+ggsave("CombinedPlotd.png", combod, path="plots", width = 6,height = 6,dpi = 600)
 
 
 ```
