@@ -12,9 +12,10 @@ inc <- read.csv('data/radiocarbon_incubation_Barrow_2012.csv', stringsAsFactors=
 
 Packages
 ```{r}
-library(tidyverse)
 library(lme4)
+library(lmerTest)
 library(gridExtra)
+library(tidyverse)
 ```
 
 Limit the dataframe to just CO2 from this experiment and make column for soil sample identifier
@@ -31,8 +32,8 @@ Design a theme for all plots
 ```{r}
 plottheme <- theme_bw() + 
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank()) +
-  theme(axis.text = element_text(color="black", size=8)) +
-  theme(axis.title = element_text(size=10)) +
+  theme(axis.text = element_text(color="black", size=10)) +
+  theme(axis.title = element_text(size=12)) +
   theme(plot.title = element_text(colour = "black", size=10, hjust = -0.15, face = "bold")) 
 
 ```
@@ -40,7 +41,7 @@ plottheme <- theme_bw() +
 Plot Delta2 vs Delta3 for the bulk data
 ```{r}
 BulkPlot <- ggplot(BulkDelta, aes(y=Delta2, x=Delta3)) +
-  geom_point(size=2, color="#27A36B") +
+  geom_point(size=2, color="#27A36B", alpha = 0.8) +
   ylab(expression(Delta[2]~"(%)")) +
   xlab(expression(Delta[3]~"(%)")) +
   xlim(-75, 25) +
@@ -75,9 +76,14 @@ summary(BulkModelb)
 
 Add trend line to BulkPlot
 ```{r}
-BulkPlot_final <- BulkPlot + 
-  plottheme +
-  geom_abline(slope=summary(BulkModel)$coefficients[2,1], intercept=summary(BulkModel)$coefficients[1,1], lty="dashed", colour="dimgrey") 
+BulkPlot_final <- ggplot(BulkDelta, aes(y=Delta2, x=Delta3)) +
+  geom_abline(slope=summary(BulkModel)$coefficients[2,1], intercept=summary(BulkModel)$coefficients[1,1], lty="dashed", colour="dimgrey") +
+  geom_point(size=2, alpha = 0.8, color="#27A36B") +
+  ylab(expression(Delta[2]~"(%)")) +
+  xlab(expression(Delta[3]~"(%)")) +
+  xlim(-75, 25) +
+  ylim(-50,50) +
+  plottheme 
 
 print(BulkPlot_final)
 
@@ -288,10 +294,17 @@ qqline(residuals(PoolsModelb_20_10000_reduced))
 Add trend lines to the pools plots using Delta2 and Delta3
 ```{r}
 #Turnover times = 50y and 5,000y
-PoolsPlot_50_5000_final <- PoolsPlot_50_5000 + 
-        plottheme + 
-        legendtheme +
-        geom_abline(slope=summary(PoolsModel_50_5000_reduced)$coefficients[2,1], intercept=summary(PoolsModel_50_5000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey") 
+PoolsPlot_50_5000_final <- ggplot(PoolsDelta_50_5000, aes(colour=pool, shape=pool, name="Carbon pool", y=as.numeric(Delta2), x=as.numeric(Delta3))) +
+  geom_abline(slope=summary(PoolsModel_50_5000_reduced)$coefficients[2,1], intercept=summary(PoolsModel_50_5000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey") +
+  geom_point(size=2, alpha = 0.8) +
+  ylab(expression(Delta[2]~"(%)")) +
+  xlab(expression(Delta[3]~"(%)")) +
+  scale_colour_manual(values=c("#4074DC","#FCAA3D"), name="Carbon pool", labels=c("Active (TT = 50 y)", "Passive (TT = 5,000 y)")) +
+  scale_shape_discrete(name="Carbon pool", labels=c("Active (TT = 50 y)", "Passive (TT = 5,000 y)")) +
+  xlim(-75, 25) +
+  ylim(-50,50) +
+  plottheme + 
+  legendtheme 
 
 print(PoolsPlot_50_5000_final)
 ggsave("PoolsPlot_50_5000.png", path="plots", width = 4,height = 3.93, dpi = 300)
