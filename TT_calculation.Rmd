@@ -5,7 +5,7 @@ date: "14/03/2017"
 output: html_document
 ---
 
-atmospheric_14C.csv is an annualized summertime dataset of 14C-CO2 for air in Barrow, AK.  
+Data: atmospheric_14C.csv is an annualized summertime dataset of 14C-CO2 for air in Barrow, AK.  File can be found at https://github.com/lydiajsvaughn/Radiocarbon_inc_2012/tree/master/data
 
 ```{r}
 atm <- read.csv('data/atmospheric_14C.csv', header=T, sep=',', na.strings=c('','no data'), fill=T, quote='', stringsAsFactors=F)
