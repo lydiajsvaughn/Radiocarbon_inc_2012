@@ -5,6 +5,10 @@ date: "February 6, 2018"
 output: html_document
 ---
 
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(message=FALSE)
+```
+
 ```{r}
 inc <- read.csv('data/radiocarbon_incubation_Barrow_2012.csv', stringsAsFactors=F)
 naming <- read.csv('data/naming.csv', header=T, sep=',', stringsAsFactors=F)
@@ -12,8 +16,9 @@ mass <- read.csv('data/soil_mass.csv', header=T, sep=',', stringsAsFactors=F)
 ```
 
 ```{r}
-library(tidyverse)
 library(lubridate)
+library(gridExtra)
+library(tidyverse)
 ```
 
 Make a column identifying each layer as shallow, middle, or deep
@@ -27,9 +32,42 @@ inc$depth_increment <- factor(inc$depth_increment, levels=c("Shallow", "Middle",
 Calculate CO2 flux in mg C per day and format dates
 ```{r}
 inc <- inc %>% left_join(mass) %>% mutate(CO2flux_total = CO2_production * mass_drysoil_g, sample_date = as.Date(sample_date, '%m/%d/%y'))
+
+inc$sample_type <- ifelse(is.na(inc$sample_type), "CO2", inc$sample_type)
 ```
 
-Plot CO2 production per in mg C day-1
+Calculate soil carbon (g) at the beginning and end of each incubation period by accounting for losses as CO2 during each  period.  Calculate the mean soil carbon (g) during each incubation period
+```{r}
+#Period 1 = 13 day incubation plus 1 day post-incubation at 5 degrees 
+#Period 2 = 5 day preincubation and 16 day incubation at 10 degrees
+#Period 3 = 4 day preincubation and 21 day incubation at 5 degrees
+
+wide <- inc %>% filter(sample_type == "CO2") %>% select(-starts_with("oc")) %>% left_join(inc %>% filter(sample_type == "soil") %>% select("plot_ID", "layer_top", "layer_bot", "oc")) 
+
+wide <- wide %>% group_by(sample_name) %>% summarize(oc = mean(oc)) %>% full_join(wide %>% select(-starts_with("oc"))) %>% distinct()
+
+#Period 3 with starting and ending soil C masses
+per3 <- wide %>% filter(sample_date == "2012-10-22") %>% mutate(soilC_end = oc / 100 * mass_drysoil_g, soilC_start = oc / 100 * mass_drysoil_g + CO2flux_total * 21 / 1000, per2_end = soilC_start + CO2flux_total * 3 / 1000) 
+
+#Period 2 with starting and ending soil C masses
+per2 <- wide %>% filter(sample_date == "2012-09-27") %>% left_join(per3 %>% select("plot_ID", "layer_top", "layer_bot", "per2_end")) %>% rename("soilC_end" = "per2_end") %>% mutate(soilC_start = soilC_end + CO2flux_total * 16 / 1000, preinc_end = soilC_start + CO2flux_total * 5 / 1000) 
+
+#Period 1 with starting and ending soil C masses
+per1 <- wide %>% filter(sample_date == "2012-09-04") %>% left_join(per2 %>% select("plot_ID", "layer_top", "layer_bot", "preinc_end")) %>% mutate(soilC_end = preinc_end + CO2flux_total * 1 / 1000, soilC_start = soilC_end + CO2flux_total * 13 / 1000) 
+wide_carbon <- per1 %>% select(-starts_with("preinc")) %>% full_join(per2 %>% select(-starts_with("preinc"))) %>% full_join(per3 %>% select(-starts_with("per2_end"))) %>% mutate(soilC_mean = (soilC_end + soilC_start) / 2)
+```
+
+For each incubation period, calculate CO2 flux in mg C respired per day per g soil C and g C respired per day per g soil C (i.e., k)
+```{r}
+wide_carbon <- wide_carbon %>% mutate(CO2flux_mg_g_d = CO2flux_total / soilC_mean, k = CO2flux_total / 1000 / soilC_mean)
+```
+
+For each incubation period, calculate the mean, sd, and se CO2 flux in mgC per g soil C per day
+```{r}
+fluxmean <- wide_carbon %>% group_by(sample_date) %>% summarize(meanflux = mean(CO2flux_mg_g_d), sdflux = sd(CO2flux_mg_g_d), nflux = length(CO2flux_mg_g_d)) %>% mutate(seflux = sdflux / nflux^0.5)
+```
+
+Themes for plots
 ```{r}
 plottheme <- theme_bw() + 
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank()) +
@@ -42,11 +80,75 @@ plottheme <- theme_bw() +
 
 plottheme2 <- plottheme + theme(axis.text.x = element_text(size=10, angle = 0))
 
+plottheme3 <- plottheme + 
+  theme(axis.title.x = element_text(color="black", size=10)) +
+  theme(axis.text.x = element_text(color="black", size=8, angle = 0)) 
+
+plottheme4 <- theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank()) +
+  theme(axis.text.y = element_text(color="black", size=8)) +
+  theme(axis.title.y = element_text(color="black", size=9)) +
+  theme(axis.text.x = element_text(color="black", size=9, margin = margin(t = 10))) +
+  theme(axis.title.x = element_blank())  +
+  theme(plot.title = element_text(size = 10, face = "bold"))
+  #theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+
 facettheme <- theme(strip.text = element_text(size=10)) +
   theme(strip.background = element_rect(colour="white", fill="white")) +
   theme(panel.spacing = unit(.5, "lines")) 
+```
 
+Plot the mean flux per incubation period as a bar chart
+```{r}
+fluxbar <- ggplot(fluxmean, aes(y=meanflux, x=as.factor(sample_date))) +
+  geom_bar(stat="identity", fill="tomato3") +
+  ylab(expression(CO[2]~flux~(mg~C~g~C^-1~d^-1))) +
+  scale_x_discrete(labels=c("Period 1", "Period 2", "Period 3")) +
+  geom_errorbar(aes(ymin = meanflux - seflux, ymax = meanflux + seflux), width = 0.2, size = 0.3) +
+  geom_hline(yintercept=0, color="black", size=0.2) 
 
+print(fluxbar + plottheme2)
+#ggsave("C14diffplot.png", path="plots", width = 4, height = 3, dpi = 600)
+```
+
+Plot the change in flux between periods 1 and 3 vs. the change in 14C between periods 1 and 3 as scatter plot
+```{r}
+wide_carbon$soil_sample <- paste(wide_carbon$plot_ID, wide_carbon$layer_top)
+wide_carbon$soil_sample <- paste(wide_carbon$soil_sample, wide_carbon$layer_bot, sep = "-")
+
+difference <- wide_carbon %>% filter(sample_date != "2012-09-27") %>%  select("soil_sample", "sample_date", "X14C") %>% spread(sample_date, X14C) %>% rename("C14_per1" = "2012-09-04", "C14_per3" = "2012-10-22") %>% full_join(wide_carbon %>% filter(sample_date != "2012-09-27") %>%  select("soil_sample", "sample_date", "CO2flux_mg_g_d") %>% spread(sample_date, CO2flux_mg_g_d) %>% rename("flux_per1" = "2012-09-04", "flux_per3" = "2012-10-22")) %>% mutate(C14_diff = C14_per3 - C14_per1, flux_diff = flux_per3 - flux_per1)
+
+flux14Cdiff <- ggplot(difference, aes(y = C14_diff, x = flux_diff)) +
+  geom_point() +
+  ylab(expression(Delta~Delta^14*C[CO2] ~ ("\u2030"))) +
+  xlab(expression(Delta~CO[2]~flux))
+
+print(flux14Cdiff + plottheme3)
+```
+
+Plot 14C vs. flux rate for period 1
+```{r}
+C14flux <- ggplot(wide_carbon %>% filter(sample_date == "2012-09-04"), aes(y = X14C, x = CO2flux_mg_g_d)) +
+  geom_point() +
+  ylab(expression(Delta^14*C["CO2"]~("\u2030"))) +
+  xlab(expression(CO[2]~production~(mg~C~g~C^-1~d^-1)))
+
+print(C14flux + plottheme3)
+```
+
+Plot the change in flux between periods 1 and 3 and the change in 14C between periods 1 and 3 as bar charts
+```{r}
+difference %>% summarize(mean(C14_diff, na.rm = T))
+
+C14diff_bar <- ggplot(difference, aes(y = mean(C14_diff, na.rm = T), x = as.factor("1"))) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  geom_errorbar(aes(ymin = mean(C14_diff, na.rm = T) - sd(C14_diff, na.rm = T) / length(C14_diff)^0.5, ymax = mean(C14_diff, na.rm = T) + sd(C14_diff, na.rm = T) / length(C14_diff)^0.5, width = 0.2))
+
+print(C14diff_bar)
+```
+
+For each incubated soil, plot CO2 production per in mg C day-1
+```{r}
 fluxplot <- ggplot(inc %>% subset(!is.na(CO2flux_total)), aes(fill=depth_increment, y=CO2flux_total, x=as.factor(sample_date))) +
   geom_bar(stat="identity", color="white") +
   ylab(expression(CO[2]~evolution~rate~(mg~C~d^-1))) +
@@ -152,6 +254,137 @@ C14bar2 <- ggplot(C14summary, aes(y=meanC14diff, x=Period)) +
 
 print(C14bar2 + plottheme2)
 ggsave("C14diffplot.png", path="plots", width = 4, height = 3, dpi = 600)
+```
+
+Scatterplot with, periods 1 and 2
+```{r}
+flux_12 <- ggplot(wide_carbon %>% filter(sample_date != "2012-10-22"), aes(y = log(CO2flux_mg_g_d), x = sample_date, group = soil_sample)) +
+  geom_point() +
+  geom_line(aes(group = soil_sample))
+
+print(flux_12)
+
+flux_13 <- ggplot(wide_carbon %>% filter(sample_date != "2012-09-27"), aes(y = log(CO2flux_mg_g_d), x = sample_date, group = soil_sample)) +
+  geom_point() +
+  geom_line(aes(group = soil_sample))
+
+print(flux_13)
+
+C14_12 <- ggplot(wide_carbon %>% filter(sample_date != "2012-10-22"), aes(y = X14C, x = sample_date, group = soil_sample)) +
+  geom_point() +
+  geom_line(aes(group = soil_sample))
+
+print(C14_12)
+
+C14_13 <- ggplot(wide_carbon %>% filter(sample_date != "2012-09-27"), aes(y = X14C, x = sample_date, group = soil_sample)) +
+  geom_point() +
+  geom_line(aes(group = soil_sample))
+
+print(C14_13)
+```
+
+Scatterplot Scatterplot with, periods 1 and 2, normalized to period 1 value
+```{r}
+wide_carbon <- wide_carbon %>% full_join(wide_carbon %>% filter(sample_date == "2012-09-04") %>% select("soil_sample", "X14C", "CO2flux_mg_g_d") %>% rename("baseline.14C" = "X14C", "baseline.flux" = "CO2flux_mg_g_d"))
+
+xlabels <- c("Period 1", "Period 2")
+#xlabels <- c(expression(Period~1~(5*degree*C)), expression(Period~2~(10*degree*C)))
 
 
+fluxnorm_12 <- ggplot(wide_carbon %>% filter(sample_date != "2012-10-22"), aes(y = CO2flux_mg_g_d - baseline.flux, x = as.numeric(as.factor(sample_date)), group = soil_sample)) +
+  geom_hline(yintercept = 0, alpha = 0.5) +
+  geom_point(color = "steelblue4", alpha = 0.7) +
+  geom_line(aes(group = soil_sample), color = "steelblue4", alpha = 0.4) +
+  scale_x_continuous(labels = xlabels, breaks = c(1, 2), limits = c(.95, 2.05)) +
+  ylab(expression("Change in"~CO[2]~production~(mg~C~g~C^-1~d^-1))) 
+
+print(fluxnorm_12 + plottheme4)
+
+xlabels <- c("Period 1", "Period 3")
+#xlabels <- c(expression(Period~1~(5*degree*C)), expression(Period~3~(5*degree*C)))
+
+
+fluxnorm_13 <- ggplot(wide_carbon %>% filter(sample_date != "2012-09-27"), aes(y = CO2flux_mg_g_d - baseline.flux, x = as.numeric(as.factor(sample_date)), group = soil_sample)) +
+  geom_hline(yintercept = 0, alpha = 0.5) +
+  geom_point(color = "steelblue4", alpha = 0.7) +
+  geom_line(aes(group = soil_sample), color = "steelblue4", alpha = 0.4) +
+  scale_x_continuous(labels = xlabels, breaks = c(1, 2), limits = c(.95, 2.05)) +
+  ylab(expression("Change in"~CO[2]~production~(mg~C~g~C^-1~d^-1))) 
+
+print(fluxnorm_13 + plottheme4)
+
+xlabels <- c("Incubation 1 \n (5°C)", "Incubation 2 \n (10°C)", "Incubation 3 \n (5°C)")
+#xlabels <- c(expression(Period~1~(5*degree*C)), expression(Period~2~(10*degree*C)), expression(Period~3~(5*degree*C)))
+
+
+fluxnorm_123 <- ggplot(wide_carbon, aes(y = (CO2flux_mg_g_d - baseline.flux) * 1000, x = as.numeric(as.factor(sample_date)), group = soil_sample)) +
+  geom_hline(yintercept = 0, size = 0.25) +
+  geom_point(color = "#5272A3", alpha = 0.7) +
+  geom_line(aes(group = soil_sample), color = "#5272A3", alpha = 0.4) +
+  scale_x_continuous(labels = xlabels, breaks = c(1, 2, 3), limits = c(1, 3)) +
+  ylab(expression(atop("Change in"~CO[2]~production, (mu*g~C~g~C^-1~d^-1)))) 
+
+print(fluxnorm_123 + plottheme4)
+```
+
+Line plots of the change in 14C between incubaiton periods
+```{r}
+xlabels <- c("Period 1", "Period 2")
+#xlabels <- c(expression(Period~1~(5*degree*C)), expression(Period~2~(10*degree*C)))
+
+
+C14norm_12 <- ggplot(wide_carbon %>% filter(sample_date != "2012-10-22"), aes(y = X14C - baseline.14C, x = as.numeric(as.factor(sample_date)), group = soil_sample)) +
+  geom_hline(yintercept = 0, alpha = 0.5) +
+  geom_point(color = "chocolate4", alpha = 0.5) +
+  geom_line(aes(group = soil_sample), color = "chocolate", alpha = 0.4) +
+  scale_x_continuous(labels = xlabels, breaks = c(1, 2), limits = c(.95, 2.05)) +
+  ylab(expression("Change in"~Delta^14*C[CO2]~("\u2030"))) 
+
+print(C14norm_12 + plottheme4)
+
+xlabels <- c("Period 1", "Period 3")
+#xlabels <- c(expression(Period~1~(5*degree*C)), expression(Period~3~(5*degree*C)))
+
+
+C14norm_13 <- ggplot(wide_carbon %>% filter(sample_date != "2012-09-27"), aes(y = X14C - baseline.14C, x = as.numeric(as.factor(sample_date)), group = soil_sample, label = sample_date)) +
+  geom_hline(yintercept = 0, alpha = 0.5) +
+  geom_point(color = "chocolate4", alpha = 0.5) +
+  geom_line(aes(group = soil_sample), color = "chocolate", alpha = 0.4) +
+  scale_x_continuous(labels = xlabels, breaks = c(1, 2), limits = c(.95, 2.05)) +
+  ylab(expression("Change in"~Delta^14*C[CO2]~("\u2030"))) 
+
+print(C14norm_13 + plottheme4)
+
+xlabels <- c("Incubation 1 \n (5°C)", "Incubation 2 \n (10°C)", "Incubation 3 \n (5°C)")
+
+C14norm_123 <- ggplot(wide_carbon, aes(y = X14C - baseline.14C, x = as.numeric(as.factor(sample_date)), group = soil_sample)) +
+  geom_hline(yintercept = 0, size = 0.25) +
+  #geom_point(color = "tomato4", alpha = 0.5) +
+  geom_point(color = "#CC5B0F", alpha = 0.5) +
+  geom_line(aes(group = soil_sample), color = "#CC5B0F", alpha = 0.4) +
+  scale_x_continuous(labels = xlabels, breaks = c(1, 2, 3)) +
+  #ylab(expression("Change in"~Delta^14*C[CO2]~("\u2030"))) 
+  ylab(expression(atop("Change in"~Delta^14*C[CO2], ("\u2030"))))
+  #labs(x='really long label \n with a return')
+
+print(C14norm_123 + plottheme4)
+```
+
+Arrange the flux and 14C plots
+```{r}
+p1 <- fluxnorm_12 + plottheme4 
+p2 <- fluxnorm_13 + plottheme4
+#p3 <- fluxnorm_123 + plottheme4 + ggtitle('a') + theme(axis.title.y = element_text(vjust=-0.2)) + theme(plot.margin = unit(c(3, 7, 3, 1), "mm"))
+p3 <- fluxnorm_123 + plottheme4 + ggtitle('a') + theme(plot.margin = unit(c(3, 7, 3, 1), "mm")) + theme(axis.title.y = element_text(vjust=-0.1)) 
+p4 <- C14norm_12 + plottheme4 
+p5 <- C14norm_13 + plottheme4
+#p6 <- C14norm_123 + plottheme4 + ggtitle('b') + theme(axis.title.y = element_text(vjust=0.65)) + theme(plot.margin = unit(c(3, 7, 3, 4.3), "mm"))
+p6 <- C14norm_123 + plottheme4 + ggtitle('b') + theme(plot.margin = unit(c(3, 7, 3, 0.4), "mm")) + theme(axis.title.y = element_text(vjust=-0.1)) 
+
+combo1 <- grid.arrange(p1, p2, p4, p5, ncol=2, nrow=2, heights = c(4,4))
+
+combo2 <- grid.arrange(p3, p6, ncol=1, nrow=2, widths =c(8))
+
+ggsave("fluxC14_1.png", combo1, path="plots", width = 6,height = 5.25,dpi = 300)
+ggsave("fluxC14_2.png", combo2, path="plots", width = 4,height = 5.33,dpi = 300)
 ```
