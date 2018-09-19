@@ -16,6 +16,7 @@ library(lme4)
 library(lmerTest)
 library(gridExtra)
 library(tidyverse)
+library(car)
 ```
 
 Limit the dataframe to just CO2 from this experiment and make column for soil sample identifier
@@ -54,8 +55,8 @@ Do the same for Delta2b and Delta3
 ```{r}
 BulkPlotb <- ggplot(BulkDelta, aes(y=Delta2b, x=Delta3)) +
   geom_point(size=2, color="#27A36B") +
-  ylab(expression(Delta["2b"]~"(%)")) +
-  xlab(expression(Delta[3]~"(%)")) +
+  ylab(expression(Delta["2,3"]~"(%)")) +
+  xlab(expression(Delta["1,3"]~"(%)")) +
   xlim(-80, 0) +
   ylim(20,100) 
 
@@ -66,21 +67,35 @@ Use a linear mixed effects model to find the linear relationship between Delta2 
 ```{r}
 BulkModel <- lmer(Delta2 ~ Delta3 + (1|plot_ID), data=BulkDelta)
 summary(BulkModel)
+
+#Diagnostic tests of model assumptions
+plot(fitted(BulkModel), residuals(BulkModel), xlab = "Fitted", ylab = "Residuals")
+plot(BulkDelta[!is.na(BulkDelta$Delta3),]$Delta3, residuals(BulkModel), xlab = expression(Delta["1,3"]), ylab = "Residuals")
+qqnorm(residuals(BulkModel))
+qqline(residuals(BulkModel))
 ```
 
 Do the same for Delta2b and Delta3
 ```{r}
 BulkModelb <- lmer(Delta2b ~ Delta3 + (1|plot_ID), data=BulkDelta)
 summary(BulkModelb)
+
+#Diagnostic tests of model assumptions
+plot(fitted(BulkModelb), residuals(BulkModelb), xlab = "Fitted", ylab = "Residuals")
+plot(BulkDelta[!is.na(BulkDelta$Delta3),]$Delta3, residuals(BulkDelta), xlab = expression(Delta["1,3"]), ylab = "Residuals")
+qqnorm(residuals(BulkModelb))
+qqline(residuals(BulkModelb))
+
 ```
 
 Add trend line to BulkPlot
 ```{r}
 BulkPlot_final <- ggplot(BulkDelta, aes(y=Delta2, x=Delta3)) +
-  geom_abline(slope=summary(BulkModel)$coefficients[2,1], intercept=summary(BulkModel)$coefficients[1,1], lty="dashed", colour="dimgrey") +
-  geom_point(size=2, alpha = 0.8, color="#27A36B") +
-  ylab(expression(Delta[2]~"(%)")) +
-  xlab(expression(Delta[3]~"(%)")) +
+  #geom_abline(slope=summary(BulkModel)$coefficients[2,1], intercept=summary(BulkModel)$coefficients[1,1], colour="#27A36B", alpha = 0.6, size = 1) +
+  stat_smooth(geom="line", alpha=0.6, size=1, method = "lm", se = FALSE, fullrange = T, color="#27A36B") +
+geom_point(size=3, alpha = 0.8, color="#27A36B") +
+  ylab(expression(Delta["1,2"]~"(%)")) +
+  xlab(expression(Delta["1,3"]~"(%)")) +
   xlim(-75, 25) +
   ylim(-50,50) +
   plottheme 
@@ -94,7 +109,8 @@ Do the same for BulkPlotb
 ```{r}
 BulkPlotb_final <- BulkPlotb + 
   plottheme +
-  geom_abline(slope=summary(BulkModelb)$coefficients[2,1], intercept=summary(BulkModelb)$coefficients[1,1], lty="dashed", colour="dimgrey") 
+  #geom_abline(slope=summary(BulkModelb)$coefficients[2,1], intercept=summary(BulkModelb)$coefficients[1,1], lty="dashed", colour="dimgrey") 
+  stat_smooth(geom="line", alpha=0.6, size=1, method = "lm", se = FALSE, fullrange = T, color="#27A36B") 
 
 print(BulkPlotb_final)
 
@@ -127,18 +143,16 @@ Plot Delta2 vs Delta3 for the partitioned data
 ```{r}
 #Turnover times = 50y and 5,000y
 
-legendtheme <- theme(legend.title = element_text(size=8)) +
-  theme(legend.text = element_text(size=6)) +
+legendtheme <- theme(legend.title = element_text(size=9)) +
+  theme(legend.text = element_text(size=8)) +
   theme(legend.position = c(.7, .25)) +
   theme(legend.key.size = unit(0.5, "cm")) +
   theme(legend.background = element_rect(color=NA, fill=NA))
-  #theme(legend.box.background = element_rect()) +
-  #theme(legend.box.margin = margin(6, 6, 6, 6))
 
 PoolsPlot_50_5000 <- ggplot(PoolsDelta_50_5000, aes(colour=pool, shape=pool, name="Carbon pool", y=as.numeric(Delta2), x=as.numeric(Delta3))) +
   geom_point(size=2) +
-  ylab(expression(Delta[2]~"(%)")) +
-  xlab(expression(Delta[3]~"(%)")) +
+  ylab(expression(Delta["1,2"]~"(%)")) +
+  xlab(expression(Delta["1,3"]~"(%)")) +
   scale_colour_manual(values=c("#4074DC","#FCAA3D"), name="Carbon pool", labels=c("Active (TT = 50 y)", "Passive (TT = 5,000 y)")) +
   scale_shape_discrete(name="Carbon pool", labels=c("Active (TT = 50 y)", "Passive (TT = 5,000 y)")) +
   xlim(-75, 25) +
@@ -149,8 +163,8 @@ PoolsPlot_50_5000 + plottheme + legendtheme
 #Turnover times = 20y and 10,000y
 PoolsPlot_20_10000 <- ggplot(PoolsDelta_20_10000, aes(colour=pool, shape=pool, name="Carbon pool", y=as.numeric(Delta2), x=as.numeric(Delta3))) +
   geom_point(size=2) +
-  ylab(expression(Delta[2]~"(%)")) +
-  xlab(expression(Delta[3]~"(%)")) +
+  ylab(expression(Delta["1,2"]~"(%)")) +
+  xlab(expression(Delta["1,3"]~"(%)")) +
   scale_colour_manual(values=c("mediumseagreen","mediumslateblue"), name="Carbon pool", labels=c("Active (TT = 20 y)", "Passive (TT = 10,000 y)")) +
   scale_shape_discrete(name="Carbon pool", labels=c("Active (TT = 20 y)", "Passive (TT = 10,000 y)")) +
   xlim(-75, 25) +
@@ -171,8 +185,8 @@ legendthemeb <- theme(legend.title = element_text(size=8)) +
 #Turnover times = 50y and 5,000y
 PoolsPlotb_50_5000 <- ggplot(PoolsDelta_50_5000, aes(colour=pool, shape=pool, name="Carbon pool", y=as.numeric(Delta2b), x=as.numeric(Delta3))) +
   geom_point(size=2) +
-  ylab(expression(Delta["2b"]~"(%)")) +
-  xlab(expression(Delta[3]~"(%)")) +
+  ylab(expression(Delta["2,3"]~"(%)")) +
+  xlab(expression(Delta["1,3"]~"(%)")) +
   scale_colour_manual(values=c("#4074DC","#FCAA3D"), name="Carbon pool", labels=c("Active (TT = 50 y)", "Passive (TT = 5,000 y)")) +
   scale_shape_discrete(name="Carbon pool", labels=c("Active (TT = 50 y)", "Passive (TT = 5,000 y)")) +
   xlim(-80, 0) +
@@ -183,8 +197,8 @@ PoolsPlotb_50_5000 + plottheme + legendthemeb
 #Turnover times = 20y and 10,000y
 PoolsPlotb_20_10000 <- ggplot(PoolsDelta_20_10000, aes(colour=pool, shape=pool, name="Carbon pool", y=as.numeric(Delta2b), x=as.numeric(Delta3))) +
   geom_point(size=2) +
-  ylab(expression(Delta["2b"]~"(%)")) +
-  xlab(expression(Delta[3]~"(%)")) +
+  ylab(expression(Delta["2,3"]~"(%)")) +
+  xlab(expression(Delta["1,3"]~"(%)")) +
   scale_colour_manual(values=c("mediumseagreen","mediumslateblue"), name="Carbon pool", labels=c("Active (TT = 20 y)", "Passive (TT = 10,000 y)")) +
   scale_shape_discrete(name="Carbon pool", labels=c("Active (TT = 20 y)", "Passive (TT = 10,000 y)")) +
   xlim(-80, 0) +
@@ -195,110 +209,109 @@ PoolsPlotb_20_10000 + plottheme + legendthemeb
 
 Use Delta2 to test whether the pools have different temprature senstivities using turnover times of 50 and 5000 years
 ```{r}
-library(car)
-
-hist(PoolsDelta_50_5000$Delta3)
-hist(PoolsDelta_50_5000$Delta2)
-qqPlot(PoolsDelta_50_5000$Delta3, "norm")
-qqPlot(PoolsDelta_50_5000$Delta2, "norm")
-
 #Model including pool as a fix effect
 PoolsModel_50_5000_full <- lmer(Delta2 ~ Delta3 + pool + (1|plot_ID/soil_sample), data=PoolsDelta_50_5000, REML=F)
 summary(PoolsModel_50_5000_full)
+
+plot(fitted(PoolsModel_50_5000_full), residuals(PoolsModel_50_5000_full), xlab = "Fitted", ylab = "Residuals")
+plot(PoolsDelta_50_5000[!is.na(PoolsDelta_50_5000$Delta3),]$Delta3, residuals(PoolsModel_50_5000_full), xlab = expression(Delta["1,3"]), ylab = "Residuals")
+qqnorm(residuals(PoolsModel_50_5000_full))
+qqline(residuals(PoolsModel_50_5000_full))
 
 #Model without pool as fixed effect
 PoolsModel_50_5000_reduced <- lmer(Delta2 ~ Delta3 + (1|plot_ID/soil_sample), data=PoolsDelta_50_5000, REML=F)
 summary(PoolsModel_50_5000_reduced)
 
-#Likelihood ratio test to determine whether pool is a significant fixed effect
-anova(PoolsModel_50_5000_full, PoolsModel_50_5000_reduced)
-
-#Validate model
-plot(fitted(PoolsModel_50_5000_reduced),residuals(PoolsModel_50_5000_reduced))
-hist(residuals(PoolsModel_50_5000_reduced))
+plot(fitted(PoolsModel_50_5000_reduced), residuals(PoolsModel_50_5000_reduced), xlab = "Fitted", ylab = "Residuals")
+plot(PoolsDelta_50_5000[!is.na(PoolsDelta_50_5000$Delta3),]$Delta3, residuals(PoolsModel_50_5000_reduced), xlab = expression(Delta["1,3"]), ylab = "Residuals")
 qqnorm(residuals(PoolsModel_50_5000_reduced))
 qqline(residuals(PoolsModel_50_5000_reduced))
+
+#Likelihood ratio test to determine whether pool is a significant fixed effect
+anova(PoolsModel_50_5000_full, PoolsModel_50_5000_reduced)
 ```
 
 Do the same with Delta2b and Delta3
 ```{r}
-hist(PoolsDelta_50_5000$Delta2b)
-qqPlot(PoolsDelta_50_5000$Delta2b, "norm")
-
 #Model including pool as a fix effect
 PoolsModelb_50_5000_full <- lmer(Delta2b ~ Delta3 + pool + (1|plot_ID/soil_sample), data=PoolsDelta_50_5000, REML=F)
 summary(PoolsModelb_50_5000_full)
+
+plot(fitted(PoolsModelb_50_5000_full), residuals(PoolsModelb_50_5000_full), xlab = "Fitted", ylab = "Residuals")
+plot(PoolsDelta_50_5000[!is.na(PoolsDelta_50_5000$Delta3),]$Delta3, residuals(PoolsModelb_50_5000_full), xlab = expression(Delta["1,3"]), ylab = "Residuals")
+qqnorm(residuals(PoolsModelb_50_5000_full))
+qqline(residuals(PoolsModelb_50_5000_full))
 
 #Model without pool as fixed effect
 PoolsModelb_50_5000_reduced <- lmer(Delta2b ~ Delta3 + (1|plot_ID/soil_sample), data=PoolsDelta_50_5000, REML=F)
 summary(PoolsModelb_50_5000_reduced)
 
-#Likelihood ratio test to determine whether pool is a significant fixed effect
-anova(PoolsModelb_50_5000_full, PoolsModelb_50_5000_reduced)
-
-#Validate model
-plot(fitted(PoolsModelb_50_5000_reduced),residuals(PoolsModelb_50_5000_reduced))
-hist(residuals(PoolsModelb_50_5000_reduced))
+plot(fitted(PoolsModelb_50_5000_reduced), residuals(PoolsModelb_50_5000_reduced), xlab = "Fitted", ylab = "Residuals")
+plot(PoolsDelta_50_5000[!is.na(PoolsDelta_50_5000$Delta3),]$Delta3, residuals(PoolsModelb_50_5000_reduced), xlab = expression(Delta["1,3"]), ylab = "Residuals")
 qqnorm(residuals(PoolsModelb_50_5000_reduced))
 qqline(residuals(PoolsModelb_50_5000_reduced))
+
+#Likelihood ratio test to determine whether pool is a significant fixed effect
+anova(PoolsModelb_50_5000_full, PoolsModelb_50_5000_reduced)
 ```
 
 Use Delta2 and Delta3 to test whether the pools have different temprature senstivities using turnover times of 20 and 10000 years
 ```{r}
-hist(PoolsDelta_20_10000$Delta3)
-hist(PoolsDelta_20_10000$Delta2)
-qqPlot(PoolsDelta_20_10000$Delta3, "norm")
-qqPlot(PoolsDelta_20_10000$Delta2, "norm")
-
 #Model including pool as a fix effect
 PoolsModel_20_10000_full <- lmer(Delta2 ~ Delta3 + pool + (1|plot_ID/soil_sample), data=PoolsDelta_20_10000, REML=F)
 summary(PoolsModel_20_10000_full)
+
+plot(fitted(PoolsModel_20_10000_full), residuals(PoolsModel_20_10000_full), xlab = "Fitted", ylab = "Residuals")
+plot(PoolsDelta_20_10000[!is.na(PoolsDelta_20_10000$Delta3),]$Delta3, residuals(PoolsModel_20_10000_full), xlab = expression(Delta["1,3"]), ylab = "Residuals")
+qqnorm(residuals(PoolsModel_20_10000_full))
+qqline(residuals(PoolsModel_20_10000_full))
 
 #Model without pool as fixed effect
 PoolsModel_20_10000_reduced <- lmer(Delta2 ~ Delta3 + (1|plot_ID/soil_sample), data=PoolsDelta_20_10000, REML=F)
 summary(PoolsModel_20_10000_reduced)
 
-#Likelihood ratio test to determine whether pool is a significant fixed effect
-anova(PoolsModel_20_10000_full, PoolsModel_20_10000_reduced)
-
-#Validate model
-plot(fitted(PoolsModel_20_10000_reduced),residuals(PoolsModel_20_10000_reduced))
-hist(residuals(PoolsModel_20_10000_reduced))
+plot(fitted(PoolsModel_20_10000_reduced), residuals(PoolsModel_20_10000_reduced), xlab = "Fitted", ylab = "Residuals")
+plot(PoolsDelta_20_10000[!is.na(PoolsDelta_20_10000$Delta3),]$Delta3, residuals(PoolsModel_20_10000_reduced), xlab = expression(Delta["1,3"]), ylab = "Residuals")
 qqnorm(residuals(PoolsModel_20_10000_reduced))
 qqline(residuals(PoolsModel_20_10000_reduced))
+
+#Likelihood ratio test to determine whether pool is a significant fixed effect
+anova(PoolsModel_20_10000_full, PoolsModel_20_10000_reduced)
 ```
 
 Do the same with Delta2b and Delta3
 ```{r}
-hist(PoolsDelta_20_10000$Delta2b)
-qqPlot(PoolsDelta_20_10000$Delta2b, "norm")
-
 #Model including pool as a fix effect
 PoolsModelb_20_10000_full <- lmer(Delta2b ~ Delta3 + pool + (1|plot_ID/soil_sample), data=PoolsDelta_20_10000, REML=F)
 summary(PoolsModelb_20_10000_full)
+
+plot(fitted(PoolsModelb_20_10000_full), residuals(PoolsModelb_20_10000_full), xlab = "Fitted", ylab = "Residuals")
+plot(PoolsDelta_20_10000[!is.na(PoolsDelta_20_10000$Delta3),]$Delta3, residuals(PoolsModelb_20_10000_full), xlab = expression(Delta["1,3"]), ylab = "Residuals")
+qqnorm(residuals(PoolsModelb_20_10000_full))
+qqline(residuals(PoolsModelb_20_10000_full))
 
 #Model without pool as fixed effect
 PoolsModelb_20_10000_reduced <- lmer(Delta2b ~ Delta3 + (1|plot_ID/soil_sample), data=PoolsDelta_20_10000, REML=F)
 summary(PoolsModelb_20_10000_reduced)
 
-#Likelihood ratio test to determine whether pool is a significant fixed effect
-anova(PoolsModelb_20_10000_full, PoolsModelb_20_10000_reduced)
-
-#Validate model
-plot(fitted(PoolsModelb_20_10000_reduced),residuals(PoolsModelb_20_10000_reduced))
-hist(residuals(PoolsModelb_20_10000_reduced))
+plot(fitted(PoolsModelb_20_10000_reduced), residuals(PoolsModelb_20_10000_reduced), xlab = "Fitted", ylab = "Residuals")
+plot(PoolsDelta_20_10000[!is.na(PoolsDelta_20_10000$Delta3),]$Delta3, residuals(PoolsModelb_20_10000_reduced), xlab = expression(Delta["1,3"]), ylab = "Residuals")
 qqnorm(residuals(PoolsModelb_20_10000_reduced))
 qqline(residuals(PoolsModelb_20_10000_reduced))
+
+#Likelihood ratio test to determine whether pool is a significant fixed effect
+anova(PoolsModelb_20_10000_full, PoolsModelb_20_10000_reduced)
 ```
 
 Add trend lines to the pools plots using Delta2 and Delta3
 ```{r}
 #Turnover times = 50y and 5,000y
 PoolsPlot_50_5000_final <- ggplot(PoolsDelta_50_5000, aes(colour=pool, shape=pool, name="Carbon pool", y=as.numeric(Delta2), x=as.numeric(Delta3))) +
-  geom_abline(slope=summary(PoolsModel_50_5000_reduced)$coefficients[2,1], intercept=summary(PoolsModel_50_5000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey") +
-  geom_point(size=2, alpha = 0.8) +
-  ylab(expression(Delta[2]~"(%)")) +
-  xlab(expression(Delta[3]~"(%)")) +
+  #geom_abline(slope=summary(PoolsModel_50_5000_reduced)$coefficients[2,1], intercept=summary(PoolsModel_50_5000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey") +
+  stat_smooth(geom="line", alpha=0.8, size=1, method = "lm", se = FALSE, fullrange = T) +
+  geom_point(size=3, alpha = 0.7) +
+  ylab(expression(Delta["1,2"]~"(%)")) +
+  xlab(expression(Delta["1,3"]~"(%)")) +
   scale_colour_manual(values=c("#4074DC","#FCAA3D"), name="Carbon pool", labels=c("Active (TT = 50 y)", "Passive (TT = 5,000 y)")) +
   scale_shape_discrete(name="Carbon pool", labels=c("Active (TT = 50 y)", "Passive (TT = 5,000 y)")) +
   xlim(-75, 25) +
@@ -311,9 +324,10 @@ ggsave("PoolsPlot_50_5000.png", path="plots", width = 4,height = 3.93, dpi = 300
 
 #Turnover times = 20y and 10,000y
 PoolsPlot_20_10000_final <- PoolsPlot_20_10000 + 
-        plottheme + 
-        legendtheme +
-        geom_abline(slope=summary(PoolsModel_20_10000_reduced)$coefficients[2,1], intercept=summary(PoolsModel_20_10000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey")
+  plottheme + 
+  legendtheme +
+  #geom_abline(slope=summary(PoolsModel_20_10000_reduced)$coefficients[2,1], intercept=summary(PoolsModel_20_10000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey")
+  stat_smooth(geom="line", alpha=0.8, size=1, method = "lm", se = FALSE, fullrange = T) 
 
 print(PoolsPlot_20_10000_final)
 ggsave("PoolsPlot_20_10000.png", path="plots", width = 4,height = 3.93,dpi = 300)
@@ -323,9 +337,10 @@ Do the same with the pools plots using Delta2b and Delta3
 ```{r}
 #Turnover times = 50y and 5,000y
 PoolsPlotb_50_5000_final <- PoolsPlotb_50_5000 + 
-        plottheme + 
-        legendthemeb +
-        geom_abline(slope=summary(PoolsModelb_50_5000_reduced)$coefficients[2,1], intercept=summary(PoolsModelb_50_5000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey")
+    plottheme + 
+    legendthemeb +
+    #geom_abline(slope=summary(PoolsModelb_50_5000_reduced)$coefficients[2,1], intercept=summary(PoolsModelb_50_5000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey")
+    stat_smooth(geom="line", alpha=0.8, size=1, method = "lm", se = FALSE, fullrange = T) 
 
 print(PoolsPlotb_50_5000_final)
 ggsave("PoolsPlotb_50_5000.png", path="plots", width = 4,height = 3.93, dpi = 300)
@@ -333,9 +348,10 @@ ggsave("PoolsPlotb_50_5000.png", path="plots", width = 4,height = 3.93, dpi = 30
 
 #Turnover times = 20y and 10,000y
 PoolsPlotb_20_10000_final <- PoolsPlotb_20_10000 + 
-        plottheme + 
-        legendthemeb +
-        geom_abline(slope=summary(PoolsModelb_20_10000_reduced)$coefficients[2,1], intercept=summary(PoolsModelb_20_10000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey") 
+    plottheme + 
+    legendthemeb +
+    #geom_abline(slope=summary(PoolsModelb_20_10000_reduced)$coefficients[2,1], intercept=summary(PoolsModelb_20_10000_reduced)$coefficients[1,1], lty="dashed", colour="dimgrey") 
+    stat_smooth(geom="line", alpha=0.8, size=1, method = "lm", se = FALSE, fullrange = T) 
 
 print(PoolsPlotb_20_10000_final)
 ggsave("PoolsPlotb_20_10000.png", path="plots", width = 4,height = 3.93,dpi = 300)
@@ -346,23 +362,111 @@ Arrange the plots for publication
 p1 <- BulkPlot_final + ggtitle('a') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 p2 <- PoolsPlot_50_5000_final + ggtitle('b') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 combo <- grid.arrange(p1, p2, ncol=2, widths=c(4,4))
-ggsave("CombinedPlot.png", combo, path="plots", width = 6,height = 3,dpi = 600)
+ggsave("CombinedPlot.png", combo, path="plots", width = 8,height = 4,dpi = 600)
 
 p3 <- BulkPlotb_final + ggtitle('a') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 p4 <- PoolsPlotb_50_5000_final + ggtitle('b') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 combob <- grid.arrange(p3, p4, ncol=2, widths=c(4,4))
-ggsave("CombinedPlotb.png", combob, path="plots", width = 6,height = 3,dpi = 600)
+ggsave("CombinedPlotb.png", combob, path="plots", width = 8,height = 4,dpi = 600)
 
 p5 <- PoolsPlot_50_5000_final + ggtitle('a') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 p6 <- PoolsPlot_20_10000_final + ggtitle('b') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 comboc <- grid.arrange(p5, p6, ncol=2, widths=c(4,4))
-ggsave("CombinedPlotc.png", comboc, path="plots", width = 6,height = 3,dpi = 600)
+ggsave("CombinedPlotc.png", comboc, path="plots", width = 8,height = 4,dpi = 600)
 
 p7 <- BulkPlotb_final + ggtitle('b') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 p8 <- PoolsPlot_50_5000_final + ggtitle('c') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 p9 <- PoolsPlotb_50_5000_final + ggtitle('d') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
 combod <- grid.arrange(p1, p7, p8, p9, ncol=2, widths=c(4,4))
 ggsave("CombinedPlotd.png", combod, path="plots", width = 6,height = 6,dpi = 600)
+```
+
+Power analysis of likelihood ratio test of pool-specific temperature sensitivities version 2
+```{r}
+active <- lm(Delta2 ~ Delta3, data=PoolsDelta_50_5000 %>% filter(pool == "Active"))
+summary(active)
+passive <- lm(Delta2 ~ Delta3, data=PoolsDelta_50_5000 %>% filter(pool == "Passive"))
+summary(passive)
+
+summary(active)
+summary(passive)
+
+nsim <- 400
+
+N = 22
+a = 41.54385
+a.act = 38.79211
+a.pass = 40.88875
+b.act = 1.14658
+b.pas = 1.12149
+b = 1.19345
+sd.D2.act = 24.76824
+sd.D2.pas = 17.25242
+sd.act = 0.08563
+sd.pas = 0.09861
+set.seed(1)
+
+power.int <- data.frame(Q10.difference=seq(0, 0.2, 0.01), power=NA) 
+
+for(j in 1:length(power.int$Q10.difference)) {
+  
+  a.diff <- power.int$Q10.difference[j]
+
+  a.act <- (((1 + a/100)^2 - a.diff/2)^0.5 - 1) * 100
+  a.pas <- (((1 + a/100)^2 + a.diff/2)^0.5 - 1) * 100
+
+  nsim = 400
+  
+  pval = numeric(nsim)
+
+  for(i in 1:nsim) {
+    
+    D3.act = rnorm(N, mean = -36.66068, sd = 21.81299)
+    D3.pas = rnorm(N, mean = -22.79575, sd = 13.31881)
+
+    active <- data.frame(Pool = "Active", Delta3 = D3.act, a = rnorm(22, mean = a.act, sd = 3.62758), b = rnorm(22, mean = b, sd = 0.08563)) %>% mutate(Delta2 = a + b * Delta3)
+  
+    passive <- data.frame(Pool = "Passive", Delta3 = D3.pas, a = rnorm(22, mean = a.pas, sd = 2.58586), b = rnorm(22, mean = b, sd = 0.09861)) %>% mutate(Delta2 = a + b * Delta3)
+
+    df <- rbind(passive, active)
+
+    model_full <- lm(Delta2 ~ Delta3 + Pool, data=df)
+    model_red <- lm(Delta2 ~ Delta3, data = df)
+    anova(model_full, model_red)
+  
+    pval[i] = anova(model_full, model_red)[2, "Pr(>F)"]
+  }
+    testplot <- ggplot(df, aes(x = Delta3, y = Delta2, color = Pool)) +
+    theme_bw() +
+    stat_smooth(geom="line", alpha=0.8, size=1, method = "lm", se = FALSE, fullrange = T) +
+    geom_point(size=3, alpha = 0.7) +
+    annotate("text", label = paste("Q10 difference =", a.diff), x = -50, y = 42, color = "black") +
+    ylab(expression(Delta["1,2"]~"(%)")) +
+    xlab(expression(Delta["1,3"]~"(%)")) +
+    scale_colour_manual(values=c("#4074DC","#FCAA3D"), name="Carbon pool", labels=c("Active", "Passive")) +
+    scale_shape_discrete(name="Carbon pool", labels=c("Active", "Passive")) +
+    xlim(-75, 25) +
+    ylim(-50,50) +
+    plottheme + 
+    legendtheme
+   
+  print(testplot)
+ 
+  assign(paste("testplot", a.diff, sep="_"), testplot)
+
+  print(mean(abs(residuals(model_red))))
+
+  power.int$power[j] = sum(pval < 0.05)/nsim
+}
+
+p10 <- testplot_0 + ggtitle('a') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+p11 <- testplot_0.12 + ggtitle('b') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+p12 <- testplot_0.19 + ggtitle('c') + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5), "cm"))
+comboe <- grid.arrange(p10, p11, p12, ncol=1, nrow=3, heights=c(4,4,4), widths=4)
+
+ggsave("CombinedPlote.png", comboe, path="plots", width = 4,height = 9,dpi = 600)
 
 
+print(power.int)
+#This shows that our test has a power of 0.8 (will detect a significant difference between pools at least 80% of the time) when there is a difference in Q10 of 0.12 or greater
 ```
