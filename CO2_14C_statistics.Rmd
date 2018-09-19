@@ -1,0 +1,190 @@
+---
+title: "CO2 flux and 14C stats"
+author: "Lydia Vaughn"
+date: "September 10, 2018"
+output: html_document
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(message=FALSE)
+```
+
+```{r}
+inc <- read.csv('data/radiocarbon_incubation_Barrow_2012.csv', stringsAsFactors=F)
+naming <- read.csv('data/naming.csv', header=T, sep=',', stringsAsFactors=F)
+mass <- read.csv('data/soil_mass.csv', header=T, sep=',', stringsAsFactors=F)
+```
+
+```{r}
+library(lubridate)
+library(lme4)
+library(lmerTest)
+library(car)
+library(multcomp)
+library(tidyverse)
+
+```
+
+Make a column identifying each layer as shallow, middle, or deep
+```{r}
+inc <- inc %>% group_by(plot_ID) %>% mutate(depth_increment = ifelse(layer_top==min(layer_top), "Shallow", ifelse(layer_bot==max(layer_bot), "Deep", "Middle"))) 
+
+inc$depth_increment <- factor(inc$depth_increment, levels=c("Shallow", "Middle", "Deep"), ordered=T)
+
+```
+
+Calculate CO2 flux in mg C per day and format dates
+```{r}
+inc <- inc %>% left_join(mass) %>% mutate(CO2flux_total = CO2_production * mass_drysoil_g, sample_date = as.Date(sample_date, '%m/%d/%y'))
+
+inc$sample_type <- ifelse(is.na(inc$sample_type), "CO2", inc$sample_type)
+```
+
+Calculate soil carbon (g) at the beginning and end of each incubation period by accounting for losses as CO2 during each  period.  Calculate the mean soil carbon (g) during each incubation period
+```{r}
+#Period 1 = 13 day incubation plus 1 day post-incubation at 5 degrees 
+#Period 2 = 5 day preincubation and 16 day incubation at 10 degrees
+#Period 3 = 4 day preincubation and 21 day incubation at 5 degrees
+
+wide <- inc %>% filter(sample_type == "CO2") %>% select(-starts_with("oc")) %>% left_join(inc %>% filter(sample_type == "soil") %>% select("plot_ID", "layer_top", "layer_bot", "oc")) 
+
+wide <- wide %>% group_by(sample_name) %>% summarize(oc = mean(oc)) %>% full_join(wide %>% select(-starts_with("oc"))) %>% distinct()
+
+#Period 3 with starting and ending soil C masses
+per3 <- wide %>% filter(sample_date == "2012-10-22") %>% mutate(soilC_end = oc / 100 * mass_drysoil_g, soilC_start = oc / 100 * mass_drysoil_g + CO2flux_total * 21 / 1000, per2_end = soilC_start + CO2flux_total * 3 / 1000) 
+
+#Period 2 with starting and ending soil C masses
+per2 <- wide %>% filter(sample_date == "2012-09-27") %>% left_join(per3 %>% select("plot_ID", "layer_top", "layer_bot", "per2_end")) %>% rename("soilC_end" = "per2_end") %>% mutate(soilC_start = soilC_end + CO2flux_total * 16 / 1000, preinc_end = soilC_start + CO2flux_total * 5 / 1000) 
+
+#Period 1 with starting and ending soil C masses
+per1 <- wide %>% filter(sample_date == "2012-09-04") %>% left_join(per2 %>% select("plot_ID", "layer_top", "layer_bot", "preinc_end")) %>% mutate(soilC_end = preinc_end + CO2flux_total * 1 / 1000, soilC_start = soilC_end + CO2flux_total * 13 / 1000) 
+wide_carbon <- per1 %>% select(-starts_with("preinc")) %>% full_join(per2 %>% select(-starts_with("preinc"))) %>% full_join(per3 %>% select(-starts_with("per2_end"))) %>% mutate(soilC_mean = (soilC_end + soilC_start) / 2)
+```
+
+For each incubation period, calculate CO2 flux in mg C respired per day per g soil C and g C respired per day per g soil C (i.e., k)
+```{r}
+wide_carbon <- wide_carbon %>% mutate(CO2flux_mg_g_d = CO2flux_total / soilC_mean, k = CO2flux_total / 1000 / soilC_mean)
+```
+
+Create identifier for individual soil sample
+```{r}
+wide_carbon$soil_sample <- paste(wide_carbon$plot_ID, wide_carbon$layer_top)
+wide_carbon$soil_sample <- paste(wide_carbon$soil_sample, wide_carbon$layer_bot, sep = "-")
+```
+
+Model CO2 production over time using a linear mixed model.  Include sample nested within profile as a random effect to account for baseline differences.
+```{r}
+flux.model <- lmer(CO2flux_mg_g_d ~ as.factor(sample_date) + (1|plot_ID/soil_sample), data = wide_carbon)
+anova(flux.model)
+summary(flux.model)
+```
+
+Test whether model is valid
+```{r}
+plot(fitted(flux.model), residuals(flux.model))
+```
+
+There is a strong pattern in the residuals.  Try a log transformation
+```{r}
+flux.model.log <- lmer(log(CO2flux_mg_g_d) ~ as.factor(sample_date) + (1|plot_ID/soil_sample), data = wide_carbon)
+anova(flux.model.log)
+summary(flux.model.log)
+```
+
+Test this log-transformed model
+```{r}
+plot(fitted(flux.model.log), residuals(flux.model.log), xlab = "Residuals", ylab = "Residuals")
+hist(residuals(flux.model.log))
+qqnorm(residuals(flux.model.log), main = expression("Q-Q plot from CO"[2]~production~model))
+qqline(residuals(flux.model.log))
+
+# I think the outlier is the one point whose flux decreased from period 1 to period 2
+```
+
+Identify the outlier
+```{r}
+which(residuals(flux.model.log) > 0.2)
+flux.model.log
+#Soil sample was B3E 0-14, whose flux and 14C values dropped dramatically from periods 1 to 2
+```
+
+Run the flux model without sample B3E 0-14
+```{r}
+flux.model.log.out <- lmer(log(CO2flux_mg_g_d) ~ as.factor(sample_date) + (1|plot_ID/soil_sample), data = wide_carbon %>% filter(soil_sample != "B3E 0-14"))
+anova(flux.model.log.out)
+summary(flux.model.log.out)
+```
+
+Test this log-transformed model
+```{r}
+#test of constant variance of errors and that there is a linear relationship between explanatory variables and response
+plot(fitted(flux.model.log.out), residuals(flux.model.log.out), xlab = "Fitted", ylab = "Residuals") 
+qqnorm(residuals(flux.model.log.out))
+qqline(residuals(flux.model.log.out))
+
+#test that errors are independent
+plot(as.factor(wide_carbon[wide_carbon$soil_sample != "B3E 0-14",]$sample_date), residuals(flux.model.log.out))
+
+#This looks much better, with only a very slightly fat-tailed distribution
+```
+
+Model 14C over time using a linear mixed model.  Include a random effect for sample nested within profile
+```{r}
+C14.model <- lmer(X14C ~ as.factor(sample_date) + (1|plot_ID/soil_sample), data = wide_carbon)
+anova(C14.model)
+summary(C14.model)
+```
+
+Test the model
+```{r}
+plot(fitted(C14.model), residuals(C14.model), xlab = "Fitted", ylab = "Residuals")
+qqnorm(residuals(C14.model), main = expression("Q-Q plot from"~Delta^14*C["CO2"]~model))
+qqline(residuals(C14.model))
+```
+
+Identify the outliers
+```{r}
+which(residuals(C14.model) > 30)
+#Soil samples were B3E 0-14 and B3E 14-31
+```
+
+Run the above model without samples B3E 0-14 and B3E 14-31
+```{r}
+C14.model.out <- lmer(X14C ~ as.factor(sample_date) + (1|plot_ID/soil_sample), data = wide_carbon %>% filter(soil_sample != "B3E 0-14" & soil_sample != "B3E 14-31"))
+anova(C14.model.out)
+summary(C14.model.out)
+```
+
+Test the model
+```{r}
+plot(fitted(C14.model.out), residuals(C14.model.out), xlab = "Fitted", ylab = "Residuals")
+qqnorm(residuals(C14.model.out))
+qqline(residuals(C14.model.out))
+
+#Now this model looks much better.
+```
+
+Include an interaction  for whether the initial value was >modern, using the dataset without the outlying samples  
+```{r}
+wide_carbon$age.class <- "modern"
+wide_carbon$age.class <- ifelse(wide_carbon$X14C_age == ">Modern", wide_carbon$age.class, "old")
+
+C14.int <- lmer(X14C ~ as.factor(sample_date)*age.class + (1|plot_ID/soil_sample), data = wide_carbon %>% filter(soil_sample != "B3E 0-14" & soil_sample != "B3E 14-31"))
+anova(C14.model)
+summary(C14.model)
+
+wide_carbon$int.14C <- interaction(wide_carbon$age.class, as.factor(wide_carbon$sample_date), sep = " x ", drop = T)
+
+C14.int.2 <- lmer(X14C ~ int.14C + (1|plot_ID/soil_sample), data = wide_carbon %>% filter(soil_sample != "B3E 0-14" & soil_sample != "B3E 14-31"))
+summary(C14.int.2)
+
+Tukage <- glht(C14.int.2, linfct = mcp(int.14C = "Tukey"), df = 35)
+summary(Tukage)
+```
+
+Test the model
+```{r}
+plot(fitted(C14.int), residuals(C14.int), xlab = "Fitted", ylab = "Residuals")
+qqnorm(residuals(C14.int))
+qqline(residuals(C14.int))
+```
