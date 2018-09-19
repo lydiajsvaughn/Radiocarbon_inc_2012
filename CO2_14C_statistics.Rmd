@@ -5,6 +5,8 @@ date: "September 10, 2018"
 output: html_document
 ---
 
+Data: radiocarbon_incubation_Barrow_2012.csv includes CO2 flux rates and radiocarbon values from incubated soils.  File and data description can be accessed at http://dx.doi.org/10.5440/1364062.  naming.csv links conflicting identifiers used for soil samples.  soil_mass.csv lists dry soil masses for each incubated sample.  naming.csv and soil_mass.csv can be found at https://github.com/lydiajsvaughn/Radiocarbon_inc_2012/tree/master/data
+
 ```{r global_options, include=FALSE}
 knitr::opts_chunk$set(message=FALSE)
 ```
