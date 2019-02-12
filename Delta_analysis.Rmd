@@ -37,6 +37,12 @@ plottheme <- theme_bw() +
   theme(axis.title = element_text(size=12)) +
   theme(plot.title = element_text(colour = "black", size=10, hjust = -0.15, face = "bold")) 
 
+plottheme2 <- theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank()) +
+  theme(axis.text = element_text(color="black", size=6)) +
+  theme(axis.title = element_text(size=7)) +
+  theme(plot.title = element_text(colour = "black", size=6, hjust = -0.15, face = "bold")) 
+
 ```
 
 Plot Delta2 vs Delta3 for the bulk data
@@ -98,11 +104,11 @@ geom_point(size=3, alpha = 0.8, color="#27A36B") +
   xlab(expression(Delta["1,3"]~"(%)")) +
   xlim(-75, 25) +
   ylim(-50,50) +
-  plottheme 
+  plottheme2 
 
 print(BulkPlot_final)
 
-ggsave("BulkPlot.png", path="plots", width = 4,height = 3.93,dpi = 300)
+ggsave("BulkPlot.pdf", path="plots", width = 88,height = 87,dpi = 300, units = "mm", encoding="MacRoman")
 ```
 
 Do the same for BulkPlotb
@@ -180,6 +186,13 @@ legendthemeb <- theme(legend.title = element_text(size=8)) +
   theme(legend.position = c(.4, .25), panel.background = element_blank()) +
   theme(legend.key.size = unit(0.5, "cm")) +
   theme(legend.background = element_rect(color=NA, fill=NA))
+
+legendthemec <- theme(legend.title = element_text(size=7)) +
+  theme(legend.text = element_text(size=6)) +
+  theme(legend.position = c(.7, .25)) +
+  theme(legend.key.size = unit(0.5, "cm")) +
+  theme(legend.background = element_rect(color=NA, fill=NA))
+
 
 
 #Turnover times = 50y and 5,000y
@@ -316,11 +329,11 @@ PoolsPlot_50_5000_final <- ggplot(PoolsDelta_50_5000, aes(colour=pool, shape=poo
   scale_shape_discrete(name="Carbon pool", labels=c("Active (TT = 50 y)", "Passive (TT = 5,000 y)")) +
   xlim(-75, 25) +
   ylim(-50,50) +
-  plottheme + 
-  legendtheme 
+  plottheme2 + 
+  legendthemec 
 
 print(PoolsPlot_50_5000_final)
-ggsave("PoolsPlot_50_5000.png", path="plots", width = 4,height = 3.93, dpi = 300)
+ggsave("PoolsPlot_50_5000.pdf", path="plots", width = 88,height = 87, dpi = 300, units = "mm")
 
 #Turnover times = 20y and 10,000y
 PoolsPlot_20_10000_final <- PoolsPlot_20_10000 + 
