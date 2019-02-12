@@ -99,8 +99,6 @@ plot(fitted(flux.model.log), residuals(flux.model.log), xlab = "Residuals", ylab
 hist(residuals(flux.model.log))
 qqnorm(residuals(flux.model.log), main = expression("Q-Q plot from CO"[2]~production~model))
 qqline(residuals(flux.model.log))
-
-# I think the outlier is the one point whose flux decreased from period 1 to period 2
 ```
 
 Identify the outlier
