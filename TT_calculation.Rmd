@@ -25,10 +25,6 @@ collyear <- c(2012, 2013, 2014)
 
 2. Make data frames for each specified turnover time and compile them in a list called Turnover
 ```{r}
-#atm_res <- atm_res[atm_res$name!="NA",]
-#TT1 <- TT1[TT1$name!="NA",]
-#TTj <- TTj[TTj$name!="NA",]
-
 atm_res <- atm[atm$year.AD>1950,]
 atm_res$year.AD <- as.numeric(atm_res$year.AD)
 atm_res$year_plant.res <- atm_res$year.AD + plant_res
@@ -99,6 +95,4 @@ Save whichever TTwindows data frames you want
 write.csv(TTwindows_2012, 'TTwindows/TTwindows_2012.csv', quote=FALSE, row.names=FALSE)
 write.csv(TTwindows_2013, 'TTwindows/TTwindows_2013.csv', quote=FALSE, row.names=FALSE)
 write.csv(TTwindows_2014, 'TTwindows/TTwindows_2014.csv', quote=FALSE, row.names=FALSE)
-
-
 ```
